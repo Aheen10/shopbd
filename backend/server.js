@@ -27,8 +27,9 @@ app.get('/', (req, res) => {
   res.json({ message: '🚀 ShopBD API is running!', status: 'OK' });
 });
 
-// Routes (Day 2 থেকে add হবে)
-// app.use('/api/auth', authRoutes);
+// Routes
+const authRoutes = require('./routes/authRoutes');
+app.use('/api/auth', authRoutes);
 // app.use('/api/products', productRoutes);
 // app.use('/api/orders', orderRoutes);
 
