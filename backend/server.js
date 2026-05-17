@@ -32,7 +32,10 @@ const authRoutes = require('./routes/authRoutes');
 app.use('/api/auth', authRoutes);
 const productRoutes = require('./routes/productRoutes');
 app.use('/api/products', productRoutes);
-// app.use('/api/orders', orderRoutes);
+const orderRoutes = require('./routes/orderRoutes');
+app.use('/api/orders', orderRoutes);
+const cartRoutes = require('./routes/cartRoutes');
+app.use('/api/cart', cartRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
