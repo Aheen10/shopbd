@@ -30,7 +30,8 @@ app.get('/', (req, res) => {
 // Routes
 const authRoutes = require('./routes/authRoutes');
 app.use('/api/auth', authRoutes);
-// app.use('/api/products', productRoutes);
+const productRoutes = require('./routes/productRoutes');
+app.use('/api/products', productRoutes);
 // app.use('/api/orders', orderRoutes);
 
 const PORT = process.env.PORT || 5000;
