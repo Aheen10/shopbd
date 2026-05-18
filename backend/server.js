@@ -42,6 +42,8 @@ const orderRoutes = require('./routes/orderRoutes');
 app.use('/api/orders', orderRoutes);
 const cartRoutes = require('./routes/cartRoutes');
 app.use('/api/cart', cartRoutes);
+const paymentRoutes = require('./routes/paymentRoutes');
+app.use('/api/payment', paymentRoutes);
 
 // Error Middleware
 const { errorHandler, notFound } = require('./middleware/errorMiddleware');
