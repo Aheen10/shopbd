@@ -2,6 +2,7 @@ const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const Joi = require('joi');
 const { authMiddleware, adminMiddleware } = require('../middleware/authMiddleware');
+const upload = require('../middleware/uploadMiddleware');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -68,12 +69,22 @@ router.get('/:id', async (req, res) => {
 });
 
 // CREATE PRODUCT (admin only)
-router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
+router.post('/', authMiddleware, adminMiddleware, upload.single('image'), async (req, res) => {
   try {
     const { error } = productSchema.validate(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
 
-    const product = await prisma.product.create({ data: req.body });
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
+    const product = await prisma.product.create({
+      data: {
+        ...req.body,
+        imageUrl,
+        price: parseFloat(req.body.price),
+        oldPrice: req.body.oldPrice ? parseFloat(req.body.oldPrice) : null,
+        stock: parseInt(req.body.stock)
+      }
+    });
     res.status(201).json({ message: 'Product created', product });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
