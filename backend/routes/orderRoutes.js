@@ -1,6 +1,7 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const { authMiddleware, adminMiddleware } = require('../middleware/authMiddleware');
+const { sendOrderConfirmation } = require('../middleware/emailService');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -38,6 +39,24 @@ router.post('/', authMiddleware, async (req, res) => {
         where: { id: item.productId },
         data: { stock: { decrement: item.quantity } }
       });
+    }
+
+    // Send confirmation email
+    try {
+      const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+      await sendOrderConfirmation(user.email, {
+        orderId: order.id,
+        customerName: user.name,
+        items: order.orderItems.map(i => ({
+          name: i.product.name,
+          emoji: i.product.emoji,
+          quantity: i.quantity,
+          price: i.price
+        })),
+        total: order.total
+      });
+    } catch (emailErr) {
+      console.log('Email error:', emailErr.message);
     }
 
     res.status(201).json({ message: 'Order placed successfully', order });
