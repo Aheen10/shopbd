@@ -6,6 +6,13 @@ const { sendOrderConfirmation } = require('../middleware/emailService');
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// Generate unique order ID
+const generateOrderId = async () => {
+  const year = new Date().getFullYear();
+  const count = await prisma.order.count();
+  return `SBD-${year}-${String(count + 1).padStart(4, '0')}`;
+};
+
 // PLACE ORDER
 router.post('/', authMiddleware, async (req, res) => {
   try {
@@ -24,16 +31,18 @@ router.post('/', authMiddleware, async (req, res) => {
       orderItems.push({ productId: item.productId, quantity: item.quantity, price: product.price });
     }
 
+    const uniqueId = await generateOrderId();
+
     const order = await prisma.order.create({
       data: {
         userId: req.user.userId,
         total,
+        uniqueId,
         orderItems: { create: orderItems }
       },
       include: { orderItems: { include: { product: true } } }
     });
 
-    // Update stock
     for (const item of items) {
       await prisma.product.update({
         where: { id: item.productId },
@@ -41,11 +50,10 @@ router.post('/', authMiddleware, async (req, res) => {
       });
     }
 
-    // Send confirmation email
     try {
       const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
       await sendOrderConfirmation(user.email, {
-        orderId: order.id,
+        orderId: order.uniqueId || order.id,
         customerName: user.name,
         items: order.orderItems.map(i => ({
           name: i.product.name,
@@ -61,7 +69,8 @@ router.post('/', authMiddleware, async (req, res) => {
 
     res.status(201).json({ message: 'Order placed successfully', order });
   } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    console.error('Place order error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -75,7 +84,8 @@ router.get('/my', authMiddleware, async (req, res) => {
     });
     res.json(orders);
   } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    console.error('My orders error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -83,12 +93,16 @@ router.get('/my', authMiddleware, async (req, res) => {
 router.get('/admin/all', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const orders = await prisma.order.findMany({
-      include: { user: { select: { name: true, email: true } }, orderItems: { include: { product: true } } },
+      include: {
+        user: { select: { name: true, email: true, phone: true } },
+        orderItems: { include: { product: true } }
+      },
       orderBy: { createdAt: 'desc' }
     });
     res.json(orders);
   } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    console.error('Admin orders error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -102,7 +116,8 @@ router.put('/:id/status', authMiddleware, adminMiddleware, async (req, res) => {
     });
     res.json({ message: 'Order status updated', order });
   } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    console.error('Update status error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
