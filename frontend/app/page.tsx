@@ -1,20 +1,17 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import ProductCard from './components/ProductCard';
 import CartDrawer from './components/CartDrawer';
 import { productsAPI } from './lib/api';
 import { Toaster } from 'react-hot-toast';
 
-const CATEGORIES = [
-  { id: 'all', label: 'All Products', emoji: '🏪' },
-  { id: 'kitchen', label: 'Kitchen', emoji: '🍳' },
-  { id: 'home', label: 'Home Decor', emoji: '🏠' },
-  { id: 'bedroom', label: 'Bedroom', emoji: '🛏️' },
-  { id: 'bathroom', label: 'Bathroom', emoji: '🚿' },
-  { id: 'cleaning', label: 'Cleaning', emoji: '🧹' },
-];
+const CATEGORY_EMOJIS: { [key: string]: string } = {
+  all: '🏪', kitchen: '🍳', home: '🏠', bedroom: '🛏️',
+  bathroom: '🚿', cleaning: '🧹', living: '🛋️', shelf: '📚',
+  default: '📦'
+};
 
 const BANNERS = [
   { bg: 'from-orange-600 to-red-600', title: 'Summer Sale!', subtitle: 'Up to 50% off on Kitchen items', emoji: '🍳' },
@@ -41,6 +38,9 @@ export default function Home() {
   const [showFilter, setShowFilter] = useState(false);
   const [sortBy, setSortBy] = useState('newest');
   const [currentBanner, setCurrentBanner] = useState(0);
+  const [categories, setCategories] = useState<{ id: string; label: string; emoji: string }[]>([
+    { id: 'all', label: 'All Products', emoji: '🏪' }
+  ]);
 
   // Banner auto slide
   useEffect(() => {
@@ -48,6 +48,25 @@ export default function Home() {
       setCurrentBanner((prev) => (prev + 1) % BANNERS.length);
     }, 3000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Fetch categories dynamically from products
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await productsAPI.getAll({ page: 1 });
+        const cats = [...new Set(res.data.products.map((p: any) => p.category))] as string[];
+        setCategories([
+          { id: 'all', label: 'All Products', emoji: '🏪' },
+          ...cats.map(c => ({
+            id: c,
+            label: c.charAt(0).toUpperCase() + c.slice(1),
+            emoji: CATEGORY_EMOJIS[c] || CATEGORY_EMOJIS.default
+          }))
+        ]);
+      } catch (err) {}
+    };
+    fetchCategories();
   }, []);
 
   const fetchProducts = async () => {
@@ -93,7 +112,7 @@ export default function Home() {
               <div className="bg-orange-500 text-white px-4 py-3 font-bold text-sm">
                 🏪 SHOP BY CATEGORY
               </div>
-              {CATEGORIES.map((cat) => (
+              {categories.map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => { setCategory(cat.id); setPage(1); }}
@@ -134,8 +153,6 @@ export default function Home() {
                   <span className="text-7xl md:text-9xl opacity-30">{banner.emoji}</span>
                 </div>
               ))}
-
-              {/* Dots */}
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
                 {BANNERS.map((_, i) => (
                   <button
@@ -193,7 +210,7 @@ export default function Home() {
 
               {/* Mobile Categories */}
               <div className="flex gap-2 overflow-x-auto pb-3 mb-4 lg:hidden">
-                {CATEGORIES.map((cat) => (
+                {categories.map((cat) => (
                   <button
                     key={cat.id}
                     onClick={() => { setCategory(cat.id); setPage(1); }}
