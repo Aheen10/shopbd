@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { ordersAPI } from '../../lib/api';
 import Navbar from '../../components/Navbar';
 import toast, { Toaster } from 'react-hot-toast';
+import jsPDF from 'jspdf';
 
 const ORDER_STEPS = [
   { key: 'pending', label: 'Order Placed', emoji: '📋', time: 'Order confirmed' },
@@ -51,6 +52,86 @@ export default function OrderDetailPage() {
     }
   };
 
+  const downloadInvoice = () => {
+  const doc = new jsPDF();
+
+  // Header
+  doc.setFillColor(255, 107, 53);
+  doc.rect(0, 0, 210, 35, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(24);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ShopBD', 14, 20);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Invoice / Receipt', 14, 28);
+
+  // Order Info
+  doc.setTextColor(50, 50, 50);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Order Details', 14, 48);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text(`Order ID: ${order.uniqueId || '#' + order.id}`, 14, 56);
+  doc.text(`Date: ${new Date(order.createdAt).toLocaleDateString()}`, 14, 63);
+  doc.text(`Status: ${order.status.toUpperCase()}`, 14, 70);
+  doc.text(`Payment: ${order.status === 'cod_pending' ? 'Cash on Delivery' : 'Online Payment'}`, 14, 77);
+
+  // Table Header
+  let y = 90;
+  doc.setFillColor(255, 107, 53);
+  doc.rect(14, y, 182, 8, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Product', 16, y + 5.5);
+  doc.text('Qty', 120, y + 5.5);
+  doc.text('Unit Price', 140, y + 5.5);
+  doc.text('Total', 175, y + 5.5);
+
+  // Table Rows
+  y += 10;
+  order.orderItems.forEach((item: any, i: number) => {
+    if (i % 2 === 0) {
+      doc.setFillColor(255, 248, 245);
+      doc.rect(14, y - 2, 182, 9, 'F');
+    }
+    doc.setTextColor(50, 50, 50);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    const name = item.product.name.length > 35 ? item.product.name.substring(0, 35) + '...' : item.product.name;
+    doc.text(name, 16, y + 4);
+    doc.text(String(item.quantity), 122, y + 4);
+    doc.text(`Tk ${item.price.toLocaleString()}`, 140, y + 4);
+    doc.text(`Tk ${(item.price * item.quantity).toLocaleString()}`, 175, y + 4);
+    y += 10;
+  });
+
+  // Total
+  y += 5;
+  doc.setFillColor(255, 248, 245);
+  doc.rect(120, y, 76, 18, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(255, 107, 53);
+  doc.text(`Total: Tk ${order.total.toLocaleString()}`, 125, y + 7);
+  doc.setTextColor(100, 150, 100);
+  doc.setFontSize(9);
+  doc.text('Delivery: Free', 125, y + 14);
+
+  // Footer
+  y += 30;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(150);
+  doc.text('Thank you for shopping with ShopBD!', 14, y);
+  doc.text('© 2025 ShopBD. All rights reserved.', 14, y + 7);
+
+  doc.save(`ShopBD-Invoice-${order.uniqueId || order.id}.pdf`);
+  toast.success('Invoice downloaded! 📄');
+};
+
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="text-orange-500 text-xl animate-pulse">Loading...</div>
@@ -70,7 +151,6 @@ export default function OrderDetailPage() {
       <Navbar />
 
       <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Back */}
         <button
           onClick={() => router.back()}
           className="flex items-center gap-2 text-gray-400 hover:text-orange-500 transition mb-6 text-sm"
@@ -82,7 +162,7 @@ export default function OrderDetailPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-          {/* Left - Main Content */}
+          {/* Left */}
           <div className="md:col-span-2 space-y-4">
 
             {/* Order Header */}
@@ -196,7 +276,7 @@ export default function OrderDetailPage() {
             </div>
           </div>
 
-          {/* Right - Summary */}
+          {/* Right */}
           <div className="space-y-4">
 
             {/* Total Summary */}
@@ -233,6 +313,12 @@ export default function OrderDetailPage() {
 
             {/* Actions */}
             <div className="space-y-2">
+              <button
+                onClick={downloadInvoice}
+                className="w-full bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 rounded-xl transition text-sm flex items-center justify-center gap-2"
+              >
+                📄 Download Invoice
+              </button>
               <button
                 onClick={() => router.push('/')}
                 className="w-full bg-orange-500 hover:bg-orange-400 text-white font-bold py-3 rounded-xl transition text-sm"
