@@ -6,11 +6,14 @@ import { useStore } from '../lib/store';
 import { ordersAPI, productsAPI } from '../lib/api';
 import Navbar from '../components/Navbar';
 import toast, { Toaster } from 'react-hot-toast';
+import jsPDF from 'jspdf';
 
 const EMPTY_PRODUCT = {
   name: '', description: '', price: '', oldPrice: '',
   category: 'kitchen', emoji: '📦', stock: '', specifications: ''
 };
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export default function AdminPage() {
   const { user } = useStore();
@@ -29,6 +32,7 @@ export default function AdminPage() {
   const [newCategory, setNewCategory] = useState('');
   const [categories, setCategories] = useState(['kitchen', 'home', 'bedroom', 'bathroom', 'cleaning']);
   const [orderSearch, setOrderSearch] = useState('');
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -49,8 +53,6 @@ export default function AdminPage() {
       ]);
       setOrders(ordersRes.data);
       setProducts(productsRes.data.products);
-
-      // Extract unique categories from products
       const productCats = [...new Set(productsRes.data.products.map((p: any) => p.category))];
       const allCats = [...new Set([...categories, ...productCats])];
       setCategories(allCats as string[]);
@@ -59,6 +61,93 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Monthly Sales Report Data
+  const getMonthlySalesData = () => {
+    return MONTHS.map((month, i) => {
+      const monthOrders = orders.filter((o: any) => {
+        const d = new Date(o.createdAt);
+        return d.getFullYear() === selectedYear && d.getMonth() === i;
+      });
+      const revenue = monthOrders.reduce((sum: number, o: any) => sum + o.total, 0);
+      const uniqueCustomers = new Set(monthOrders.map((o: any) => o.userId)).size;
+      return {
+        month,
+        orders: monthOrders.length,
+        revenue,
+        customers: uniqueCustomers,
+      };
+    });
+  };
+
+  const downloadSalesReport = () => {
+    const doc = new jsPDF();
+    const data = getMonthlySalesData();
+
+    // Header
+    doc.setFillColor(255, 107, 53);
+    doc.rect(0, 0, 210, 35, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ShopBD - Sales Report', 14, 20);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Year: ${selectedYear}`, 14, 28);
+
+    // Summary
+    const totalRev = data.reduce((s, d) => s + d.revenue, 0);
+    const totalOrd = data.reduce((s, d) => s + d.orders, 0);
+    doc.setTextColor(50, 50, 50);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total Revenue: Tk ${totalRev.toLocaleString()}`, 14, 48);
+    doc.text(`Total Orders: ${totalOrd}`, 14, 56);
+    doc.setFont('helvetica', 'normal');
+
+    // Table Header
+    let y = 70;
+    doc.setFillColor(255, 107, 53);
+    doc.rect(14, y, 182, 8, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Month', 16, y + 5.5);
+    doc.text('Orders', 65, y + 5.5);
+    doc.text('Customers', 100, y + 5.5);
+    doc.text('Revenue (Tk)', 145, y + 5.5);
+
+    // Table Rows
+    y += 10;
+    data.forEach((row, i) => {
+      if (i % 2 === 0) {
+        doc.setFillColor(255, 248, 245);
+        doc.rect(14, y - 2, 182, 9, 'F');
+      }
+      doc.setTextColor(50, 50, 50);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(row.month, 16, y + 4);
+      doc.text(String(row.orders), 65, y + 4);
+      doc.text(String(row.customers), 100, y + 4);
+      doc.text(`Tk ${row.revenue.toLocaleString()}`, 145, y + 4);
+      y += 10;
+    });
+
+    // Footer
+    y += 10;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(255, 107, 53);
+    doc.text(`Annual Total: Tk ${totalRev.toLocaleString()}`, 14, y);
+    doc.setTextColor(150);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text('© 2025 ShopBD. All rights reserved.', 14, y + 10);
+
+    doc.save(`ShopBD-Sales-Report-${selectedYear}.pdf`);
+    toast.success('Sales report downloaded! 📊');
   };
 
   const openAddModal = () => {
@@ -71,14 +160,10 @@ export default function AdminPage() {
   const openEditModal = (p: any) => {
     setEditingProduct(p);
     setProductForm({
-      name: p.name,
-      description: p.description || '',
-      price: p.price,
-      oldPrice: p.oldPrice || '',
-      category: p.category,
-      emoji: p.emoji,
-      stock: p.stock,
-      specifications: p.specifications || '',
+      name: p.name, description: p.description || '',
+      price: p.price, oldPrice: p.oldPrice || '',
+      category: p.category, emoji: p.emoji,
+      stock: p.stock, specifications: p.specifications || '',
     });
     setImageFiles([]);
     setShowProductModal(true);
@@ -94,7 +179,6 @@ export default function AdminPage() {
       const formData = new FormData();
       Object.entries(productForm).forEach(([k, v]) => { if (v !== '') formData.append(k, String(v)); });
       imageFiles.forEach(file => formData.append('images', file));
-
       if (editingProduct) {
         await productsAPI.update(editingProduct.id, formData);
         toast.success('Product updated! ✅');
@@ -112,7 +196,7 @@ export default function AdminPage() {
   };
 
   const handleDeleteProduct = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
+    if (!confirm('Are you sure?')) return;
     try {
       await productsAPI.delete(id);
       toast.success('Product deleted');
@@ -136,7 +220,6 @@ export default function AdminPage() {
   const lowStockProducts = products.filter((p: any) => p.stock <= 5);
   const warningProducts = products.filter((p: any) => p.stock > 5 && p.stock <= 10);
 
-  // Get unique customers from orders
   const customersMap = new Map();
   orders.forEach((o: any) => {
     if (o.user && !customersMap.has(o.userId)) {
@@ -145,7 +228,6 @@ export default function AdminPage() {
   });
   const allCustomers = Array.from(customersMap.values());
 
-  // Filter customers by search
   const filteredCustomers = allCustomers.filter((c: any) => {
     if (!customerSearch) return true;
     return (
@@ -155,7 +237,6 @@ export default function AdminPage() {
     );
   });
 
-  // Filter orders by search
   const filteredOrders = orders.filter((o: any) => {
     if (!orderSearch) return true;
     return (
@@ -176,6 +257,9 @@ export default function AdminPage() {
       default: return 'bg-gray-100 text-gray-700';
     }
   };
+
+  const monthlySalesData = getMonthlySalesData();
+  const maxRevenue = Math.max(...monthlySalesData.map(d => d.revenue), 1);
 
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -218,7 +302,7 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto">
-          {['dashboard', 'orders', 'products', 'customers'].map((tab) => (
+          {['dashboard', 'orders', 'products', 'customers', 'reports'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -232,6 +316,7 @@ export default function AdminPage() {
               {tab === 'orders' && '📦 '}
               {tab === 'products' && '🏪 '}
               {tab === 'customers' && '👥 '}
+              {tab === 'reports' && '📈 '}
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
@@ -271,7 +356,6 @@ export default function AdminPage() {
                 </div>
               </div>
             )}
-
             <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
               <h2 className="text-lg font-bold mb-4">📦 Recent Orders</h2>
               <table className="w-full text-sm">
@@ -340,11 +424,7 @@ export default function AdminPage() {
                       </td>
                       <td className="py-3 text-gray-500">{order.orderItems?.length} items</td>
                       <td className="py-3 font-bold">৳{order.total.toLocaleString()}</td>
-                      <td className="py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>
-                          {order.status}
-                        </span>
-                      </td>
+                      <td className="py-3"><span className={`px-2 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>{order.status}</span></td>
                       <td className="py-3">
                         <select
                           value={order.status}
@@ -373,10 +453,7 @@ export default function AdminPage() {
           <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold">🏪 Products ({products.length})</h2>
-              <button
-                onClick={openAddModal}
-                className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-xl text-sm transition"
-              >
+              <button onClick={openAddModal} className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-xl text-sm transition">
                 ➕ Add Product
               </button>
             </div>
@@ -415,15 +492,10 @@ export default function AdminPage() {
                       </td>
                       <td className="py-3 font-bold">{p.stock}</td>
                       <td className="py-3">
-                        {p.stock === 0 ? (
-                          <span className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded-full font-bold">OUT OF STOCK</span>
-                        ) : p.stock <= 5 ? (
-                          <span className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded-full font-bold">CRITICAL</span>
-                        ) : p.stock <= 10 ? (
-                          <span className="bg-yellow-100 text-yellow-600 text-xs px-2 py-1 rounded-full font-bold">WARNING</span>
-                        ) : (
-                          <span className="bg-green-100 text-green-600 text-xs px-2 py-1 rounded-full font-bold">IN STOCK</span>
-                        )}
+                        {p.stock === 0 ? <span className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded-full font-bold">OUT OF STOCK</span>
+                          : p.stock <= 5 ? <span className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded-full font-bold">CRITICAL</span>
+                          : p.stock <= 10 ? <span className="bg-yellow-100 text-yellow-600 text-xs px-2 py-1 rounded-full font-bold">WARNING</span>
+                          : <span className="bg-green-100 text-green-600 text-xs px-2 py-1 rounded-full font-bold">IN STOCK</span>}
                       </td>
                       <td className="py-3">
                         <div className="flex gap-2">
@@ -489,6 +561,92 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+        {/* Reports Tab */}
+        {activeTab === 'reports' && (
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-bold">📈 Monthly Sales Report</h2>
+                <div className="flex items-center gap-3">
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                    className="border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-orange-500"
+                  >
+                    {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                  <button
+                    onClick={downloadSalesReport}
+                    className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-xl text-sm transition flex items-center gap-2"
+                  >
+                    📄 Download PDF
+                  </button>
+                </div>
+              </div>
+
+              {/* Year Summary */}
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                {[
+                  { label: 'Total Revenue', value: `৳${monthlySalesData.reduce((s, d) => s + d.revenue, 0).toLocaleString()}`, color: 'text-orange-500' },
+                  { label: 'Total Orders', value: monthlySalesData.reduce((s, d) => s + d.orders, 0), color: 'text-blue-500' },
+                  { label: 'Total Customers', value: monthlySalesData.reduce((s, d) => s + d.customers, 0), color: 'text-green-500' },
+                ].map((stat, i) => (
+                  <div key={i} className="bg-gray-50 rounded-xl p-4 text-center">
+                    <p className="text-gray-400 text-xs mb-1">{stat.label}</p>
+                    <p className={`text-xl font-black ${stat.color}`}>{stat.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Bar Chart */}
+              <div className="mb-6">
+                <h3 className="text-sm font-bold text-gray-600 mb-4">Revenue by Month</h3>
+                <div className="flex items-end gap-2 h-40">
+                  {monthlySalesData.map((d, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                      <span className="text-xs text-gray-500 font-bold">
+                        {d.revenue > 0 ? `৳${(d.revenue / 1000).toFixed(1)}k` : ''}
+                      </span>
+                      <div
+                        className="w-full bg-orange-500 rounded-t-lg transition-all duration-500 hover:bg-orange-400 relative group"
+                        style={{ height: `${(d.revenue / maxRevenue) * 120}px`, minHeight: d.revenue > 0 ? '4px' : '0' }}
+                      >
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-10">
+                          {d.orders} orders
+                        </div>
+                      </div>
+                      <span className="text-xs text-gray-400">{d.month}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Table */}
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-gray-400 border-b border-gray-100">
+                    <th className="text-left pb-3">Month</th>
+                    <th className="text-left pb-3">Orders</th>
+                    <th className="text-left pb-3">Customers</th>
+                    <th className="text-left pb-3">Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthlySalesData.map((d, i) => (
+                    <tr key={i} className={`border-b border-gray-50 hover:bg-gray-50 ${d.orders === 0 ? 'opacity-40' : ''}`}>
+                      <td className="py-3 font-medium">{d.month} {selectedYear}</td>
+                      <td className="py-3">{d.orders}</td>
+                      <td className="py-3">{d.customers}</td>
+                      <td className="py-3 font-bold text-orange-500">৳{d.revenue.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Product Modal */}
@@ -499,143 +657,87 @@ export default function AdminPage() {
               <h2 className="text-xl font-black">{editingProduct ? '✏️ Edit Product' : '➕ Add Product'}</h2>
               <button onClick={() => setShowProductModal(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
             </div>
-
             <div className="space-y-4">
               <div>
                 <label className="text-gray-600 text-sm font-medium mb-1 block">Product Name *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Non-Stick Frying Pan"
-                  value={productForm.name}
+                <input type="text" placeholder="e.g. Non-Stick Frying Pan" value={productForm.name}
                   onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
-                />
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
               </div>
-
               <div>
                 <label className="text-gray-600 text-sm font-medium mb-1 block">Description</label>
-                <textarea
-                  placeholder="Product description..."
-                  value={productForm.description}
+                <textarea placeholder="Product description..." value={productForm.description} rows={3}
                   onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                  rows={3}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
-                />
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-gray-600 text-sm font-medium mb-1 block">Price (৳) *</label>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={productForm.price}
+                  <input type="number" placeholder="0" value={productForm.price}
                     onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
-                  />
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
                 </div>
                 <div>
                   <label className="text-gray-600 text-sm font-medium mb-1 block">Old Price (৳)</label>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={productForm.oldPrice}
+                  <input type="number" placeholder="0" value={productForm.oldPrice}
                     onChange={(e) => setProductForm({ ...productForm, oldPrice: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
-                  />
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-gray-600 text-sm font-medium mb-1 block">Category *</label>
-                  <select
-                    value={productForm.category}
-                    onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
-                  >
+                  <select value={productForm.category} onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500">
                     {categories.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  {/* Add new category */}
                   <div className="flex gap-2 mt-2">
-                    <input
-                      type="text"
-                      placeholder="New category..."
-                      value={newCategory}
+                    <input type="text" placeholder="New category..." value={newCategory}
                       onChange={(e) => setNewCategory(e.target.value)}
-                      className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-orange-500"
-                    />
-                    <button
-                      onClick={() => {
-                        if (newCategory.trim()) {
-                          setCategories([...categories, newCategory.trim().toLowerCase()]);
-                          setProductForm({ ...productForm, category: newCategory.trim().toLowerCase() });
-                          setNewCategory('');
-                          toast.success('Category added!');
-                        }
-                      }}
-                      className="bg-orange-500 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-orange-400 transition"
-                    >
-                      + Add
-                    </button>
+                      className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-orange-500" />
+                    <button onClick={() => {
+                      if (newCategory.trim()) {
+                        setCategories([...categories, newCategory.trim().toLowerCase()]);
+                        setProductForm({ ...productForm, category: newCategory.trim().toLowerCase() });
+                        setNewCategory('');
+                        toast.success('Category added!');
+                      }
+                    }} className="bg-orange-500 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-orange-400 transition">+ Add</button>
                   </div>
                 </div>
                 <div>
                   <label className="text-gray-600 text-sm font-medium mb-1 block">Stock *</label>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={productForm.stock}
+                  <input type="number" placeholder="0" value={productForm.stock}
                     onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
-                  />
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
                 </div>
               </div>
-
               <div>
                 <label className="text-gray-600 text-sm font-medium mb-1 block">Emoji</label>
-                <input
-                  type="text"
-                  placeholder="📦"
-                  value={productForm.emoji}
+                <input type="text" placeholder="📦" value={productForm.emoji}
                   onChange={(e) => setProductForm({ ...productForm, emoji: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
-                />
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
               </div>
-
-              {/* Multiple Image Upload */}
               <div>
                 <label className="text-gray-600 text-sm font-medium mb-1 block">Product Images (Max 5) 📷</label>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={(e) => setImageFiles(Array.from(e.target.files || []).slice(0, 5))}
-                  className="hidden"
-                />
-                <button
-                  onClick={() => fileRef.current?.click()}
-                  className="w-full border-2 border-dashed border-gray-200 rounded-xl px-4 py-4 text-sm text-gray-500 hover:border-orange-500 hover:text-orange-500 transition"
-                >
+                <input ref={fileRef} type="file" accept="image/*" multiple
+                  onChange={(e) => setImageFiles(Array.from(e.target.files || []).slice(0, 5))} className="hidden" />
+                <button onClick={() => fileRef.current?.click()}
+                  className="w-full border-2 border-dashed border-gray-200 rounded-xl px-4 py-4 text-sm text-gray-500 hover:border-orange-500 hover:text-orange-500 transition">
                   {imageFiles.length > 0 ? `✅ ${imageFiles.length} image(s) selected` : '📷 Click to upload images'}
                 </button>
-
                 {imageFiles.length > 0 && (
                   <div className="flex gap-2 mt-3 flex-wrap">
                     {imageFiles.map((f, i) => (
                       <div key={i} className="relative">
                         <img src={URL.createObjectURL(f)} className="w-16 h-16 object-cover rounded-xl border border-gray-200" />
                         {i === 0 && <span className="absolute -top-1 -left-1 bg-orange-500 text-white text-xs px-1 rounded-full">Main</span>}
-                        <button
-                          onClick={() => setImageFiles(imageFiles.filter((_, idx) => idx !== i))}
-                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center"
-                        >✕</button>
+                        <button onClick={() => setImageFiles(imageFiles.filter((_, idx) => idx !== i))}
+                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">✕</button>
                       </div>
                     ))}
                   </div>
                 )}
-
                 {editingProduct?.images && imageFiles.length === 0 && (
                   <div className="mt-2">
                     <p className="text-xs text-gray-400 mb-2">Current images:</p>
@@ -647,32 +749,21 @@ export default function AdminPage() {
                   </div>
                 )}
               </div>
-
-              {/* Specifications */}
               <div>
                 <label className="text-gray-600 text-sm font-medium mb-1 block">Specifications</label>
-                <textarea
-                  placeholder={`Size: 42cm x 18cm\nColor: Black\nMaterial: Stainless Steel\nWeight: 2kg`}
-                  value={productForm.specifications}
+                <textarea placeholder={`Size: 42cm x 18cm\nColor: Black\nMaterial: Stainless Steel`}
+                  value={productForm.specifications} rows={4}
                   onChange={(e) => setProductForm({ ...productForm, specifications: e.target.value })}
-                  rows={4}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
-                />
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
                 <p className="text-gray-400 text-xs mt-1">প্রতিটা line এ একটা specification লেখো</p>
               </div>
-
               <div className="flex gap-3 pt-2">
-                <button
-                  onClick={handleSaveProduct}
-                  disabled={saving}
-                  className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 text-white font-bold py-3 rounded-xl transition"
-                >
+                <button onClick={handleSaveProduct} disabled={saving}
+                  className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 text-white font-bold py-3 rounded-xl transition">
                   {saving ? 'Saving...' : editingProduct ? 'Update Product' : 'Add Product'}
                 </button>
-                <button
-                  onClick={() => setShowProductModal(false)}
-                  className="px-6 border border-gray-200 text-gray-500 font-bold py-3 rounded-xl hover:bg-gray-50 transition"
-                >
+                <button onClick={() => setShowProductModal(false)}
+                  className="px-6 border border-gray-200 text-gray-500 font-bold py-3 rounded-xl hover:bg-gray-50 transition">
                   Cancel
                 </button>
               </div>
