@@ -54,3 +54,12 @@ model OrderItem {
   quantity  Int
   price     Float
 }
+
+model SiteSettings {
+  id          Int    @id @default(autoincrement())
+  banners     String @db.Text
+  trustBadges String @db.Text
+  shopName    String @default("ShopBD")
+  heroTitle   String @default("Everything for Your Home")
+  heroSubtitle String @default("Kitchen, bedroom, bathroom & more.")
+}
