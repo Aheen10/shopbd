@@ -68,6 +68,18 @@ export const ordersAPI = {
     api.put(`/api/orders/${id}/status`, { status }),
 };
 
+// Settings API
+export const settingsAPI = {
+  get: () => api.get('/api/settings'),
+  update: (data: any) => api.put('/api/settings', data),
+  uploadBannerImage: (file: File) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return api.post('/api/settings/banner-image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+};
 // Payment API
 export const paymentAPI = {
   bkash: (data: { orderId: number; phone: string; amount: number }) =>
