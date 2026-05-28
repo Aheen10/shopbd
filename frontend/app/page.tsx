@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import ProductCard from './components/ProductCard';
 import CartDrawer from './components/CartDrawer';
-import { productsAPI } from './lib/api';
+import { productsAPI, settingsAPI } from './lib/api';
 import { Toaster } from 'react-hot-toast';
 
 const CATEGORY_EMOJIS: { [key: string]: string } = {
@@ -13,13 +13,13 @@ const CATEGORY_EMOJIS: { [key: string]: string } = {
   default: '📦'
 };
 
-const BANNERS = [
-  { bg: 'from-orange-600 to-red-600', title: 'Summer Sale!', subtitle: 'Up to 50% off on Kitchen items', emoji: '🍳' },
-  { bg: 'from-blue-600 to-purple-600', title: 'New Arrivals', subtitle: 'Fresh home decor collection', emoji: '🏠' },
-  { bg: 'from-green-600 to-teal-600', title: 'Flash Deal', subtitle: 'Limited time offers today', emoji: '⚡' },
+const DEFAULT_BANNERS = [
+  { bg: 'from-orange-600 to-red-600', title: 'Summer Sale!', subtitle: 'Up to 50% off on Kitchen items', emoji: '🍳', link: '/' },
+  { bg: 'from-blue-600 to-purple-600', title: 'New Arrivals', subtitle: 'Fresh home decor collection', emoji: '🏠', link: '/' },
+  { bg: 'from-green-600 to-teal-600', title: 'Flash Deal', subtitle: 'Limited time offers today', emoji: '⚡', link: '/' },
 ];
 
-const TRUST_BADGES = [
+const DEFAULT_BADGES = [
   { emoji: '🚚', title: 'Fast Delivery', subtitle: 'Free shipping over ৳2000' },
   { emoji: '✅', title: 'Quality Products', subtitle: 'Verified & authenticated' },
   { emoji: '📞', title: 'Customer Support', subtitle: '9am to 9pm daily' },
@@ -38,19 +38,34 @@ export default function Home() {
   const [showFilter, setShowFilter] = useState(false);
   const [sortBy, setSortBy] = useState('newest');
   const [currentBanner, setCurrentBanner] = useState(0);
+  const [settings, setSettings] = useState<any>(null);
   const [categories, setCategories] = useState<{ id: string; label: string; emoji: string }[]>([
     { id: 'all', label: 'All Products', emoji: '🏪' }
   ]);
 
+  const banners = settings?.banners || DEFAULT_BANNERS;
+  const trustBadges = settings?.trustBadges || DEFAULT_BADGES;
+
+  // Fetch settings
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await settingsAPI.get();
+        setSettings(res.data);
+      } catch (err) {}
+    };
+    fetchSettings();
+  }, []);
+
   // Banner auto slide
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentBanner((prev) => (prev + 1) % BANNERS.length);
+      setCurrentBanner((prev) => (prev + 1) % banners.length);
     }, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [banners.length]);
 
-  // Fetch categories dynamically from products
+  // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -133,14 +148,21 @@ export default function Home() {
 
             {/* Hero Banner Slider */}
             <div className="relative rounded-2xl overflow-hidden mb-6 h-48 md:h-64">
-              {BANNERS.map((banner, i) => (
+              {banners.map((banner: any, i: number) => (
                 <div
                   key={i}
                   className={`absolute inset-0 bg-gradient-to-r ${banner.bg} flex items-center justify-between px-8 transition-opacity duration-500 ${
                     i === currentBanner ? 'opacity-100' : 'opacity-0'
                   }`}
                 >
-                  <div>
+                  {banner.imageUrl && (
+                    <img
+                      src={`http://localhost:5000${banner.imageUrl}`}
+                      className="absolute inset-0 w-full h-full object-cover opacity-30"
+                      alt=""
+                    />
+                  )}
+                  <div className="relative z-10">
                     <h2 className="text-3xl md:text-4xl font-black text-white mb-2">{banner.title}</h2>
                     <p className="text-white/80 text-sm md:text-base mb-4">{banner.subtitle}</p>
                     <button
@@ -150,15 +172,15 @@ export default function Home() {
                       Shop Now →
                     </button>
                   </div>
-                  <span className="text-7xl md:text-9xl opacity-30">{banner.emoji}</span>
+                  <span className="text-7xl md:text-9xl opacity-30 relative z-10">{banner.emoji}</span>
                 </div>
               ))}
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
-                {BANNERS.map((_, i) => (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                {banners.map((_: any, i: number) => (
                   <button
                     key={i}
                     onClick={() => setCurrentBanner(i)}
-                    className={`w-2 h-2 rounded-full transition ${i === currentBanner ? 'bg-white w-6' : 'bg-white/50'}`}
+                    className={`h-2 rounded-full transition-all ${i === currentBanner ? 'bg-white w-6' : 'bg-white/50 w-2'}`}
                   />
                 ))}
               </div>
@@ -166,7 +188,7 @@ export default function Home() {
 
             {/* Trust Badges */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              {TRUST_BADGES.map((badge, i) => (
+              {trustBadges.map((badge: any, i: number) => (
                 <div key={i} className="bg-white rounded-xl p-3 flex items-center gap-3 border border-gray-100 shadow-sm">
                   <span className="text-2xl">{badge.emoji}</span>
                   <div>
