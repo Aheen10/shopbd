@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Navbar from './components/Navbar';
 import ProductCard from './components/ProductCard';
 import CartDrawer from './components/CartDrawer';
@@ -14,9 +15,9 @@ const CATEGORY_EMOJIS: { [key: string]: string } = {
 };
 
 const DEFAULT_BANNERS = [
-  { bg: 'from-orange-600 to-red-600', title: 'Summer Sale!', subtitle: 'Up to 50% off on Kitchen items', emoji: '🍳', link: '/' },
-  { bg: 'from-blue-600 to-purple-600', title: 'New Arrivals', subtitle: 'Fresh home decor collection', emoji: '🏠', link: '/' },
-  { bg: 'from-green-600 to-teal-600', title: 'Flash Deal', subtitle: 'Limited time offers today', emoji: '⚡', link: '/' },
+  { bg: 'from-orange-600 to-red-600', title: 'Summer Sale!', subtitle: 'Up to 50% off on Kitchen items', emoji: '🍳', link: '/', imageUrl: null },
+  { bg: 'from-blue-600 to-purple-600', title: 'New Arrivals', subtitle: 'Fresh home decor collection', emoji: '🏠', link: '/', imageUrl: null },
+  { bg: 'from-green-600 to-teal-600', title: 'Flash Deal', subtitle: 'Limited time offers today', emoji: '⚡', link: '/', imageUrl: null },
 ];
 
 const DEFAULT_BADGES = [
@@ -27,6 +28,7 @@ const DEFAULT_BADGES = [
 ];
 
 export default function Home() {
+  const router = useRouter();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('all');
@@ -112,6 +114,12 @@ export default function Home() {
     return () => clearTimeout(timeout);
   }, [search]);
 
+  const handleBannerClick = (banner: any) => {
+    if (banner.link && banner.link !== '/') {
+      router.push(banner.link);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <Toaster position="bottom-right" />
@@ -151,30 +159,54 @@ export default function Home() {
               {banners.map((banner: any, i: number) => (
                 <div
                   key={i}
-                  className={`absolute inset-0 bg-gradient-to-r ${banner.bg} flex items-center justify-between px-8 transition-opacity duration-500 ${
+                  onClick={() => handleBannerClick(banner)}
+                  className={`absolute inset-0 transition-opacity duration-500 ${
                     i === currentBanner ? 'opacity-100' : 'opacity-0'
-                  }`}
+                  } ${banner.link && banner.link !== '/' ? 'cursor-pointer' : ''}`}
                 >
-                  {banner.imageUrl && (
-                    <img
-                      src={`http://localhost:5000${banner.imageUrl}`}
-                      className="absolute inset-0 w-full h-full object-cover opacity-30"
-                      alt=""
-                    />
+                  {banner.imageUrl ? (
+                    /* Real image banner */
+                    <div className="relative w-full h-full">
+                      <img
+                        src={`http://localhost:5000${banner.imageUrl}`}
+                        className="w-full h-full object-cover"
+                        alt={banner.title}
+                      />
+                      {/* Overlay text */}
+                      {banner.title && (
+                        <div className="absolute inset-0 bg-black/30 flex items-center px-8">
+                          <div>
+                            <h2 className="text-3xl md:text-4xl font-black text-white mb-2 drop-shadow-lg">{banner.title}</h2>
+                            <p className="text-white/90 text-sm md:text-base mb-4 drop-shadow">{banner.subtitle}</p>
+                            {banner.link && banner.link !== '/' && (
+                              <span className="bg-white text-orange-600 font-bold px-6 py-2 rounded-full text-sm">
+                                Shop Now →
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Gradient banner */
+                    <div className={`absolute inset-0 bg-gradient-to-r ${banner.bg || 'from-orange-600 to-red-600'} flex items-center justify-between px-8`}>
+                      <div className="relative z-10">
+                        <h2 className="text-3xl md:text-4xl font-black text-white mb-2">{banner.title}</h2>
+                        <p className="text-white/80 text-sm md:text-base mb-4">{banner.subtitle}</p>
+                        <button
+                          onClick={() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' })}
+                          className="bg-white text-orange-600 font-bold px-6 py-2 rounded-full text-sm hover:bg-orange-50 transition"
+                        >
+                          Shop Now →
+                        </button>
+                      </div>
+                      <span className="text-7xl md:text-9xl opacity-30 relative z-10">{banner.emoji}</span>
+                    </div>
                   )}
-                  <div className="relative z-10">
-                    <h2 className="text-3xl md:text-4xl font-black text-white mb-2">{banner.title}</h2>
-                    <p className="text-white/80 text-sm md:text-base mb-4">{banner.subtitle}</p>
-                    <button
-                      onClick={() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' })}
-                      className="bg-white text-orange-600 font-bold px-6 py-2 rounded-full text-sm hover:bg-orange-50 transition"
-                    >
-                      Shop Now →
-                    </button>
-                  </div>
-                  <span className="text-7xl md:text-9xl opacity-30 relative z-10">{banner.emoji}</span>
                 </div>
               ))}
+
+              {/* Dots */}
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-10">
                 {banners.map((_: any, i: number) => (
                   <button
