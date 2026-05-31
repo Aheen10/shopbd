@@ -3,16 +3,18 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useStore } from '../lib/store';
+import { translations } from '../lib/translations';
 import toast from 'react-hot-toast';
 
 export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
-  const { user, logout, cart } = useStore();
+  const { user, logout, cart, language, toggleLanguage } = useStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
+  const t = translations[language];
 
   const handleLogout = () => {
     logout();
-    toast.success('Logged out successfully');
+    toast.success(language === 'bn' ? 'সফলভাবে লগআউট হয়েছে' : 'Logged out successfully');
     setDropdownOpen(false);
   };
 
@@ -29,7 +31,7 @@ export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
           <div className="relative">
             <input
               type="text"
-              placeholder="Search products..."
+              placeholder={t.search}
               className="w-full border border-gray-200 rounded-full px-5 py-2.5 text-sm focus:outline-none focus:border-orange-500 bg-gray-50"
             />
             <button className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-orange-500">
@@ -40,13 +42,33 @@ export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
 
         {/* Actions */}
         <div className="flex items-center gap-3">
+
+          {/* Language Toggle */}
+          <button
+            onClick={toggleLanguage}
+            className="flex items-center gap-1.5 border border-gray-200 rounded-full px-3 py-2 hover:border-orange-500 hover:text-orange-500 transition text-sm font-bold text-gray-600"
+            title={language === 'en' ? 'Switch to Bangla' : 'Switch to English'}
+          >
+            {language === 'en' ? (
+              <>
+                <span className="text-base">🇧🇩</span>
+                <span className="hidden md:block text-xs">বাংলা</span>
+              </>
+            ) : (
+              <>
+                <span className="text-base">🇬🇧</span>
+                <span className="hidden md:block text-xs">English</span>
+              </>
+            )}
+          </button>
+
           {/* Cart */}
           <button
             onClick={onCartClick}
             className="relative flex items-center gap-2 border border-gray-200 rounded-full px-4 py-2 hover:border-orange-500 hover:text-orange-500 transition text-sm font-semibold text-gray-700"
           >
             🛒
-            <span className="hidden md:block">Cart</span>
+            <span className="hidden md:block">{t.cart}</span>
             {cartCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
                 {cartCount}
@@ -75,14 +97,14 @@ export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
                     onClick={() => setDropdownOpen(false)}
                     className="flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-orange-50 hover:text-orange-500 text-sm text-gray-700 transition"
                   >
-                    📦 My Orders
+                    📦 {t.myOrders}
                   </Link>
                   <Link
                     href="/profile"
                     onClick={() => setDropdownOpen(false)}
                     className="flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-orange-50 hover:text-orange-500 text-sm text-gray-700 transition"
                   >
-                    👤 Profile
+                    👤 {t.profile}
                   </Link>
                   {user.role === 'admin' && (
                     <Link
@@ -90,7 +112,7 @@ export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
                       onClick={() => setDropdownOpen(false)}
                       className="flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-orange-50 text-sm text-orange-500 font-semibold transition"
                     >
-                      ⚙️ Admin Dashboard
+                      ⚙️ {t.admin} Dashboard
                     </Link>
                   )}
                   <div className="border-t border-gray-100 mt-1 pt-1">
@@ -98,7 +120,7 @@ export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
                       onClick={handleLogout}
                       className="flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-red-50 text-sm text-red-500 transition w-full"
                     >
-                      🚪 Logout
+                      🚪 {t.logout}
                     </button>
                   </div>
                 </div>
@@ -109,7 +131,7 @@ export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
               href="/login"
               className="bg-orange-500 text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-orange-400 transition"
             >
-              Login
+              {t.login}
             </Link>
           )}
         </div>
