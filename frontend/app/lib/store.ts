@@ -15,6 +15,8 @@ interface CartItem {
   quantity: number;
 }
 
+type Language = 'en' | 'bn';
+
 interface Store {
   // Auth
   user: User | null;
@@ -29,6 +31,11 @@ interface Store {
   updateQty: (productId: number, qty: number) => void;
   clearCart: () => void;
   cartTotal: () => number;
+
+  // Language
+  language: Language;
+  toggleLanguage: () => void;
+  setLanguage: (lang: Language) => void;
 }
 
 export const useStore = create<Store>((set, get) => ({
@@ -79,4 +86,18 @@ export const useStore = create<Store>((set, get) => ({
   clearCart: () => set({ cart: [] }),
   cartTotal: () =>
     get().cart.reduce((sum, i) => sum + i.price * i.quantity, 0),
+
+  // Language
+  language: typeof window !== 'undefined'
+    ? (localStorage.getItem('shopbd_lang') as Language) || 'en'
+    : 'en',
+  toggleLanguage: () => {
+    const newLang = get().language === 'en' ? 'bn' : 'en';
+    localStorage.setItem('shopbd_lang', newLang);
+    set({ language: newLang });
+  },
+  setLanguage: (lang) => {
+    localStorage.setItem('shopbd_lang', lang);
+    set({ language: lang });
+  },
 }));
