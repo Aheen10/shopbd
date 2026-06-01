@@ -16,7 +16,7 @@ const generateOrderId = async () => {
 // PLACE ORDER
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { items } = req.body;
+    const { items, phone, address } = req.body;
     if (!items || !items.length) return res.status(400).json({ error: 'No items provided' });
 
     let total = 0;
@@ -33,11 +33,27 @@ router.post('/', authMiddleware, async (req, res) => {
 
     const uniqueId = await generateOrderId();
 
+    // Auto-update user phone if not set
+    if (phone) {
+      const currentUser = await prisma.user.findUnique({ where: { id: req.user.userId } });
+      if (!currentUser.phone) {
+        await prisma.user.update({
+          where: { id: req.user.userId },
+          data: { phone }
+        });
+      }
+    }
+
+    // Save address to order
+    const addressStr = address ? JSON.stringify(address) : null;
+
     const order = await prisma.order.create({
       data: {
         userId: req.user.userId,
         total,
         uniqueId,
+        deliveryPhone: phone || null,
+        deliveryAddress: addressStr,
         orderItems: { create: orderItems }
       },
       include: { orderItems: { include: { product: true } } }
@@ -52,17 +68,19 @@ router.post('/', authMiddleware, async (req, res) => {
 
     try {
       const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
-      await sendOrderConfirmation(user.email, {
-        orderId: order.uniqueId || order.id,
-        customerName: user.name,
-        items: order.orderItems.map(i => ({
-          name: i.product.name,
-          emoji: i.product.emoji,
-          quantity: i.quantity,
-          price: i.price
-        })),
-        total: order.total
-      });
+      if (user.email) {
+        await sendOrderConfirmation(user.email, {
+          orderId: order.uniqueId || order.id,
+          customerName: user.name,
+          items: order.orderItems.map(i => ({
+            name: i.product.name,
+            emoji: i.product.emoji,
+            quantity: i.quantity,
+            price: i.price
+          })),
+          total: order.total
+        });
+      }
     } catch (emailErr) {
       console.log('Email error:', emailErr.message);
     }
@@ -99,7 +117,14 @@ router.get('/admin/all', authMiddleware, adminMiddleware, async (req, res) => {
       },
       orderBy: { createdAt: 'desc' }
     });
-    res.json(orders);
+
+    // Parse deliveryAddress for each order
+    const parsedOrders = orders.map((o) => ({
+      ...o,
+      deliveryAddress: o.deliveryAddress ? JSON.parse(o.deliveryAddress) : null,
+    }));
+
+    res.json(parsedOrders);
   } catch (err) {
     console.error('Admin orders error:', err);
     res.status(500).json({ error: err.message });
