@@ -33,8 +33,8 @@ export const authAPI = {
 
 // Products API
 export const productsAPI = {
-  getAll: (params?: { search?: string; category?: string; page?: number; minPrice?: string; maxPrice?: string }) =>
-    api.get('/api/products', { params }),
+  getAll: (params?: { search?: string; category?: string; page?: number; minPrice?: string; maxPrice?: string; limit?: number }) =>
+  api.get('/api/products', { params }),
   getOne: (id: number) => api.get(`/api/products/${id}`),
   create: (data: FormData) =>
     api.post('/api/products', data, {
