@@ -7,37 +7,87 @@ import { ordersAPI, paymentAPI } from '../lib/api';
 import Navbar from '../components/Navbar';
 import toast, { Toaster } from 'react-hot-toast';
 
-// Bangladesh Districts
 const DISTRICTS = [
-  'Dhaka', 'Chittagong', 'Rajshahi', 'Khulna', 'Barishal', 'Sylhet', 'Rangpur', 'Mymensingh',
-  'Comilla', 'Narayanganj', 'Gazipur', 'Narsingdi', 'Munshiganj', 'Manikganj', 'Tangail',
-  'Kishoreganj', 'Netrokona', 'Sherpur', 'Jamalpur', 'Bogura', 'Joypurhat', 'Naogaon',
-  'Natore', 'Chapainawabganj', 'Pabna', 'Sirajganj', 'Dinajpur', 'Thakurgaon', 'Panchagarh',
-  'Nilphamari', 'Lalmonirhat', 'Kurigram', 'Gaibandha', 'Jashore', 'Satkhira', 'Meherpur',
-  'Chuadanga', 'Kushtia', 'Magura', 'Jhenaidah', 'Narail', 'Bagerhat', 'Pirojpur',
-  'Jhalokati', 'Bhola', 'Patuakhali', 'Barguna', 'Sunamganj', 'Habiganj', 'Moulvibazar',
-  'Brahmanbaria', 'Chandpur', 'Lakshmipur', 'Noakhali', 'Feni', "Cox's Bazar", 'Bandarban',
-  'Khagrachhari', 'Rangamati'
+  'Dhaka', 'Gazipur', 'Narayanganj', 'Narsingdi', 'Munshiganj', 'Manikganj', 'Tangail',
+  'Kishoreganj', 'Netrokona', 'Sherpur', 'Jamalpur', 'Mymensingh', 'Faridpur', 'Gopalganj',
+  'Madaripur', 'Rajbari', 'Shariatpur', 'Chattogram', 'Cox\'s Bazar', 'Rangamati', 'Bandarban',
+  'Khagrachhari', 'Feni', 'Lakshmipur', 'Noakhali', 'Comilla', 'Chandpur', 'Brahmanbaria',
+  'Rajshahi', 'Chapainawabganj', 'Naogaon', 'Natore', 'Bogura', 'Joypurhat', 'Pabna',
+  'Sirajganj', 'Khulna', 'Bagerhat', 'Satkhira', 'Jashore', 'Narail', 'Magura', 'Jhenaidah',
+  'Chuadanga', 'Meherpur', 'Kushtia', 'Barishal', 'Patuakhali', 'Barguna', 'Bhola',
+  'Pirojpur', 'Jhalokati', 'Sylhet', 'Moulvibazar', 'Habiganj', 'Sunamganj', 'Rangpur',
+  'Gaibandha', 'Kurigram', 'Lalmonirhat', 'Nilphamari', 'Panchagarh', 'Thakurgaon', 'Dinajpur'
 ];
 
-// Thana/Upazila by District
 const THANAS: { [key: string]: string[] } = {
-  'Dhaka': ['Dhanmondi', 'Gulshan', 'Mirpur', 'Mohammadpur', 'Uttara', 'Motijheel', 'Lalbagh', 'Kotwali', 'Demra', 'Badda', 'Khilgaon', 'Sabujbagh', 'Rampura', 'Bangshal', 'Sutrapur', 'Hazaribagh', 'Kamrangirchar', 'Keraniganj', 'Savar', 'Dohar', 'Nawabganj', 'Wari', 'Shyampur', 'Jatrabari', 'Kadamtali', 'Adabor', 'Pallabi', 'Kafrul', 'Cantonment', 'Shah Ali', 'Tejgaon', 'Turag'],
-  'Chittagong': ['Kotwali', 'Double Mooring', 'Pahartali', 'Panchlaish', 'Chandgaon', 'Bayazid', 'Hathazari', 'Raozan', 'Boalkhali', 'Patiya', 'Anwara', 'Banshkhali', 'Lohagara', 'Satkania', 'Chakaria', 'Cox\'s Bazar Sadar', 'Sitakunda', 'Mirsarai', 'Sandwip', 'Fatikchhari'],
+  'Dhaka': ['Adabor', 'Badda', 'Bangshal', 'Cantonment', 'Chawkbazar', 'Dakshinkhan', 'Darus Salam', 'Demra', 'Dhanmondi', 'Dohar', 'Gendaria', 'Gulshan', 'Hazaribagh', 'Jatrabari', 'Kafrul', 'Kadamtali', 'Kamrangirchar', 'Keraniganj', 'Khilgaon', 'Khilkhet', 'Kotwali', 'Lalbagh', 'Mirpur', 'Mohammadpur', 'Motijheel', 'Nawabganj', 'Pallabi', 'Rampura', 'Sabujbagh', 'Savar', 'Shah Ali', 'Shahbagh', 'Shyampur', 'Sutrapur', 'Tejgaon', 'Turag', 'Uttara', 'Uttarkhan', 'Wari'],
   'Gazipur': ['Gazipur Sadar', 'Kaliakair', 'Kapasia', 'Sreepur', 'Kaliganj', 'Tongi'],
   'Narayanganj': ['Narayanganj Sadar', 'Bandar', 'Araihazar', 'Rupganj', 'Sonargaon'],
-  'Rajshahi': ['Boalia', 'Motihar', 'Rajpara', 'Shah Makhdum', 'Paba', 'Godagari', 'Tanore', 'Bagmara', 'Charghat', 'Durgapur'],
-  'Khulna': ['Khulna Sadar', 'Sonadanga', 'Khalishpur', 'Khan Jahan Ali', 'Daulatpur', 'Batiaghata', 'Dumuria', 'Fultala', 'Dighalia', 'Rupsa', 'Terokhada', 'Koyra', 'Paikgachha'],
-  'Sylhet': ['Sylhet Sadar', 'Beanibazar', 'Bishwanath', 'Companiganj', 'Fenchuganj', 'Golapganj', 'Gowainghat', 'Jaintiapur', 'Kanaighat', 'Osmaninagar', 'South Surma', 'Zakiganj', 'Balaganj'],
-  'Barishal': ['Barishal Sadar', 'Bakerganj', 'Banaripara', 'Gaurnadi', 'Agailjhara', 'Babuganj', 'Muladi', 'Mehendiganj', 'Hiron', 'Wazirpur'],
-  'Rangpur': ['Rangpur Sadar', 'Badarganj', 'Gangachara', 'Kaunia', 'Mithapukur', 'Pirgachha', 'Pirganj', 'Taraganj'],
-  'Mymensingh': ['Mymensingh Sadar', 'Bhaluka', 'Dhobaura', 'Fulbaria', 'Gaffargaon', 'Gauripur', 'Haluaghat', 'Ishwarganj', 'Muktagachha', 'Nandail', 'Phulpur', 'Trishal'],
-  'Comilla': ['Comilla Sadar', 'Adarsha Sadar', 'Barura', 'Brahmanpara', 'Burichang', 'Chandina', 'Chauddagram', 'Daudkandi', 'Debidwar', 'Homna', 'Laksam', 'Lalmai', 'Meghna', 'Monohorganj', 'Muradnagar', 'Nangalkot', 'Titas'],
+  'Narsingdi': ['Narsingdi Sadar', 'Belabo', 'Monohardi', 'Palash', 'Raipura', 'Shibpur'],
+  'Munshiganj': ['Munshiganj Sadar', 'Gazaria', 'Lohajang', 'Sirajdikhan', 'Sreenagar', 'Tongibari'],
+  'Manikganj': ['Manikganj Sadar', 'Daulatpur', 'Ghior', 'Harirampur', 'Saturia', 'Shivalaya', 'Singair'],
   'Tangail': ['Tangail Sadar', 'Basail', 'Bhuapur', 'Delduar', 'Dhanbari', 'Ghatail', 'Gopalpur', 'Kalihati', 'Madhupur', 'Mirzapur', 'Nagarpur', 'Sakhipur'],
+  'Kishoreganj': ['Kishoreganj Sadar', 'Austagram', 'Bajitpur', 'Bhairab', 'Hossainpur', 'Itna', 'Karimganj', 'Katiadi', 'Kuliarchar', 'Mithamain', 'Nikli', 'Pakundia', 'Tarail'],
+  'Netrokona': ['Netrokona Sadar', 'Atpara', 'Barhatta', 'Durgapur', 'Kendua', 'Khaliajuri', 'Madan', 'Mohanganj', 'Purbadhala'],
+  'Sherpur': ['Sherpur Sadar', 'Jhenaigati', 'Nakla', 'Nalitabari', 'Sreebardi'],
+  'Jamalpur': ['Jamalpur Sadar', 'Baksiganj', 'Dewanganj', 'Islampur', 'Madarganj', 'Melandaha', 'Sarishabari'],
+  'Mymensingh': ['Mymensingh Sadar', 'Bhaluka', 'Dhobaura', 'Fulbaria', 'Gaffargaon', 'Gauripur', 'Haluaghat', 'Ishwarganj', 'Muktagachha', 'Nandail', 'Phulpur', 'Trishal'],
+  'Faridpur': ['Faridpur Sadar', 'Alfadanga', 'Bhanga', 'Boalmari', 'Char Bhadrasan', 'Madhukhali', 'Nagarkanda', 'Sadarpur', 'Saltha'],
+  'Gopalganj': ['Gopalganj Sadar', 'Kashiani', 'Kotalipara', 'Muksudpur', 'Tungipara'],
+  'Madaripur': ['Madaripur Sadar', 'Kalkini', 'Rajoir', 'Shibchar'],
+  'Rajbari': ['Rajbari Sadar', 'Baliakandi', 'Goalanda', 'Kalukhali', 'Pangsha'],
+  'Shariatpur': ['Shariatpur Sadar', 'Bhedarganj', 'Damudya', 'Gosairhat', 'Naria', 'Zanjira'],
+  'Chattogram': ['Chandgaon', 'Kotwali', 'Double Mooring', 'Pahartali', 'Panchlaish', 'Bayazid', 'Hathazari', 'Raozan', 'Boalkhali', 'Patiya', 'Anwara', 'Banshkhali', 'Lohagara', 'Satkania', 'Chakaria', 'Sitakunda', 'Mirsarai', 'Sandwip', 'Fatikchhari', 'Rangunia', 'Karnafuli'],
+  "Cox's Bazar": ["Cox's Bazar Sadar", 'Chakaria', 'Kutubdia', 'Maheshkhali', 'Pekua', 'Ramu', 'Teknaf', 'Ukhia'],
+  'Rangamati': ['Rangamati Sadar', 'Baghaichhari', 'Barkal', 'Belaichhari', 'Juraichhari', 'Kaptai', 'Kawkhali', 'Langadu', 'Naniarchar', 'Rajasthali'],
+  'Bandarban': ['Bandarban Sadar', 'Alikadam', 'Lama', 'Naikhongchhari', 'Rowangchhari', 'Ruma', 'Thanchi'],
+  'Khagrachhari': ['Khagrachhari Sadar', 'Dighinala', 'Lakshmichhari', 'Mahalchhari', 'Manikchhari', 'Matiranga', 'Panchhari', 'Ramgarh'],
+  'Feni': ['Feni Sadar', 'Chhagalnaiya', 'Daganbhuiyan', 'Parshuram', 'Sonagazi', 'Fulgazi'],
+  'Lakshmipur': ['Lakshmipur Sadar', 'Kamalnagar', 'Raipur', 'Ramganj', 'Ramgati'],
+  'Noakhali': ['Noakhali Sadar', 'Begumganj', 'Chatkhil', 'Companiganj', 'Hatiya', 'Senbagh', 'Sonaimuri', 'Subarnachar'],
+  'Comilla': ['Comilla Sadar', 'Adarsha Sadar', 'Barura', 'Brahmanpara', 'Burichang', 'Chandina', 'Chauddagram', 'Daudkandi', 'Debidwar', 'Homna', 'Laksam', 'Lalmai', 'Meghna', 'Monohorganj', 'Muradnagar', 'Nangalkot', 'Titas'],
+  'Chandpur': ['Chandpur Sadar', 'Faridganj', 'Haimchar', 'Hajiganj', 'Kachua', 'Matlab Uttar', 'Matlab Dakshin', 'Shahrasti'],
+  'Brahmanbaria': ['Brahmanbaria Sadar', 'Akhaura', 'Ashuganj', 'Bancharampur', 'Bijoynagar', 'Kasba', 'Nabinagar', 'Nasirnagar', 'Sarail'],
+  'Rajshahi': ['Boalia', 'Motihar', 'Rajpara', 'Shah Makhdum', 'Paba', 'Godagari', 'Tanore', 'Bagmara', 'Charghat', 'Durgapur', 'Mohanpur', 'Putia'],
+  'Chapainawabganj': ['Chapainawabganj Sadar', 'Bholahat', 'Gomastapur', 'Nachole', 'Shibganj'],
+  'Naogaon': ['Naogaon Sadar', 'Atrai', 'Badalgachhi', 'Dhamoirhat', 'Mahadebpur', 'Manda', 'Mohadevpur', 'Niamatpur', 'Patnitala', 'Porsha', 'Raninagar', 'Sapahar'],
+  'Natore': ['Natore Sadar', 'Bagatipara', 'Baraigram', 'Gurudaspur', 'Lalpur', 'Singra'],
+  'Bogura': ['Bogura Sadar', 'Adamdighi', 'Dhunat', 'Dhupchanchia', 'Gabtali', 'Kahaloo', 'Nandigram', 'Sariakandi', 'Shajahanpur', 'Sherpur', 'Shibganj', 'Sonatala'],
+  'Joypurhat': ['Joypurhat Sadar', 'Akkelpur', 'Kalai', 'Khetlal', 'Panchbibi'],
+  'Pabna': ['Pabna Sadar', 'Atgharia', 'Bera', 'Bhangura', 'Chatmohar', 'Faridpur', 'Ishwardi', 'Santhia', 'Sujanagar'],
+  'Sirajganj': ['Sirajganj Sadar', 'Belkuchi', 'Chauhali', 'Kamarkhanda', 'Kazipur', 'Raiganj', 'Shahjadpur', 'Tarash', 'Ullahpara'],
+  'Khulna': ['Khulna Sadar', 'Sonadanga', 'Khalishpur', 'Khan Jahan Ali', 'Daulatpur', 'Batiaghata', 'Dumuria', 'Fultala', 'Dighalia', 'Rupsa', 'Terokhada', 'Koyra', 'Paikgachha'],
+  'Bagerhat': ['Bagerhat Sadar', 'Chitalmari', 'Fakirhat', 'Kachua', 'Mollahat', 'Mongla', 'Morrelganj', 'Rampal', 'Sarankhola'],
+  'Satkhira': ['Satkhira Sadar', 'Assasuni', 'Debhata', 'Kalaroa', 'Kaliganj', 'Shyamnagar', 'Tala'],
+  'Jashore': ['Jashore Sadar', 'Abhaynagar', 'Bagherpara', 'Chaugachha', 'Jhikargachha', 'Keshabpur', 'Manirampur', 'Sharsha'],
+  'Narail': ['Narail Sadar', 'Kalia', 'Lohagara'],
+  'Magura': ['Magura Sadar', 'Mohammadpur', 'Shalikha', 'Sreepur'],
+  'Jhenaidah': ['Jhenaidah Sadar', 'Harinakunda', 'Kaliganj', 'Kotchandpur', 'Maheshpur', 'Shailkupa'],
+  'Chuadanga': ['Chuadanga Sadar', 'Alamdanga', 'Damurhuda', 'Jibannagar'],
+  'Meherpur': ['Meherpur Sadar', 'Gangni', 'Mujibnagar'],
+  'Kushtia': ['Kushtia Sadar', 'Bheramara', 'Daulatpur', 'Khoksa', 'Kumarkhali', 'Mirpur'],
+  'Barishal': ['Barishal Sadar', 'Agailjhara', 'Babuganj', 'Bakerganj', 'Banaripara', 'Gaurnadi', 'Hiron', 'Mehendiganj', 'Muladi', 'Wazirpur'],
+  'Patuakhali': ['Patuakhali Sadar', 'Bauphal', 'Dashmina', 'Dumki', 'Galachipa', 'Kalapara', 'Mirzaganj', 'Rangabali'],
+  'Barguna': ['Barguna Sadar', 'Amtali', 'Bamna', 'Betagi', 'Patharghata', 'Taltali'],
+  'Bhola': ['Bhola Sadar', 'Borhanuddin', 'Char Fasson', 'Daulatkhan', 'Lalmohan', 'Manpura', 'Tazumuddin'],
+  'Pirojpur': ['Pirojpur Sadar', 'Bhandaria', 'Kawkhali', 'Mathbaria', 'Nazipur', 'Nesarabad', 'Zianagar'],
+  'Jhalokati': ['Jhalokati Sadar', 'Kathalia', 'Nalchity', 'Rajapur'],
+  'Sylhet': ['Sylhet Sadar', 'Balaganj', 'Beanibazar', 'Bishwanath', 'Companiganj', 'Fenchuganj', 'Golapganj', 'Gowainghat', 'Jaintiapur', 'Kanaighat', 'Osmaninagar', 'South Surma', 'Zakiganj'],
+  'Moulvibazar': ['Moulvibazar Sadar', 'Barlekha', 'Juri', 'Kamalganj', 'Kulaura', 'Rajnagar', 'Sreemangal'],
+  'Habiganj': ['Habiganj Sadar', 'Ajmiriganj', 'Bahubal', 'Baniachong', 'Chunarughat', 'Lakhai', 'Madhabpur', 'Nabiganj'],
+  'Sunamganj': ['Sunamganj Sadar', 'Bishwamvarpur', 'Chhatak', 'Derai', 'Dharmapasha', 'Dowarabazar', 'Jagannathpur', 'Jamalganj', 'Sulla', 'Tahirpur'],
+  'Rangpur': ['Rangpur Sadar', 'Badarganj', 'Gangachara', 'Kaunia', 'Mithapukur', 'Pirgachha', 'Pirganj', 'Taraganj'],
+  'Gaibandha': ['Gaibandha Sadar', 'Fulchhari', 'Gobindaganj', 'Palashbari', 'Sadullapur', 'Saghata', 'Sundarganj'],
+  'Kurigram': ['Kurigram Sadar', 'Bhurungamari', 'Char Rajibpur', 'Chilmari', 'Nageshwari', 'Phulbari', 'Rajarhat', 'Raumari', 'Ulipur'],
+  'Lalmonirhat': ['Lalmonirhat Sadar', 'Aditmari', 'Hatibandha', 'Kaliganj', 'Patgram'],
+  'Nilphamari': ['Nilphamari Sadar', 'Dimla', 'Domar', 'Jaldhaka', 'Kishoreganj', 'Saidpur'],
+  'Panchagarh': ['Panchagarh Sadar', 'Atwari', 'Boda', 'Debiganj', 'Tetulia'],
+  'Thakurgaon': ['Thakurgaon Sadar', 'Baliadangi', 'Haripur', 'Pirganj', 'Ranisankail'],
+  'Dinajpur': ['Dinajpur Sadar', 'Birampur', 'Birganj', 'Biral', 'Bochaganj', 'Chirirbandar', 'Fulbari', 'Ghoraghat', 'Hakimpur', 'Kaharole', 'Khansama', 'Nawabganj', 'Parbatipur'],
 };
 
 const getThanas = (district: string): string[] => {
-  return THANAS[district] || ['Sadar', 'Pourashava'];
+  return THANAS[district] || [];
 };
 
 export default function CheckoutPage() {
@@ -54,7 +104,6 @@ export default function CheckoutPage() {
   const [paymentVerified, setPaymentVerified] = useState(false);
   const [transactionId, setTransactionId] = useState('');
 
-  // Address Form
   const [address, setAddress] = useState({
     name: user?.name || '',
     phone: '',
@@ -80,21 +129,19 @@ export default function CheckoutPage() {
   const handleAddressSubmit = async () => {
     if (!user) { toast.error('Please login first'); router.push('/login'); return; }
     if (cart.length === 0) { toast.error('Cart is empty'); return; }
+    if (!address.name) { toast.error('Name is required'); return; }
     if (!address.phone) { toast.error('Phone number is required'); return; }
-    if (!/^(\+8801|8801|01)[3-9]\d{8}$/.test(address.phone)) {
-      toast.error('Invalid phone number'); return;
-    }
+    if (!/^(\+8801|8801|01)[3-9]\d{8}$/.test(address.phone)) { toast.error('Invalid phone number'); return; }
     if (!address.district) { toast.error('District is required'); return; }
     if (!address.thana) { toast.error('Thana/Upazila is required'); return; }
     if (!address.fullAddress) { toast.error('Full address is required'); return; }
 
-    // Save address to localStorage
     localStorage.setItem('shopbd_address', JSON.stringify(address));
 
     setLoading(true);
     try {
       const items = cart.map(i => ({ productId: i.productId, quantity: i.quantity }));
-      const res = await ordersAPI.place(items);
+      const res = await ordersAPI.place(items, address.phone, address);
       setOrderId(res.data.order.id);
       setUniqueOrderId(res.data.order.uniqueId);
       setStep('payment');
@@ -107,12 +154,8 @@ export default function CheckoutPage() {
   };
 
   const handleVerifyPayment = async () => {
-    if (!transactionId.trim()) {
-      toast.error('Transaction ID is required');
-      return;
-    }
+    if (!transactionId.trim()) { toast.error('Transaction ID is required'); return; }
     setVerifyingPayment(true);
-    // Simulate verification (in real app, call backend to verify)
     await new Promise(resolve => setTimeout(resolve, 2000));
     setVerifyingPayment(false);
     setPaymentVerified(true);
@@ -121,12 +164,10 @@ export default function CheckoutPage() {
 
   const handlePayment = async () => {
     if (!orderId) return;
-
     if (paymentMethod !== 'cod') {
       if (!paymentPhone) { toast.error('Phone number required'); return; }
       if (!paymentVerified) { toast.error('Please verify your payment first'); return; }
     }
-
     setLoading(true);
     try {
       if (paymentMethod === 'bkash') {
@@ -153,20 +194,13 @@ export default function CheckoutPage() {
 
       <div className="max-w-2xl mx-auto px-4 py-8">
 
-        {/* Progress Steps */}
+        {/* Progress */}
         {step !== 'success' && (
           <div className="flex items-center justify-center gap-2 mb-8">
-            {[
-              { key: 'address', label: 'Delivery Address', num: 1 },
-              { key: 'payment', label: 'Payment', num: 2 },
-            ].map((s, i) => (
+            {[{ key: 'address', label: 'Delivery Address', num: 1 }, { key: 'payment', label: 'Payment', num: 2 }].map((s, i) => (
               <div key={s.key} className="flex items-center gap-2">
                 <div className={`flex items-center gap-2 ${step === s.key ? 'text-orange-500' : step === 'payment' && s.key === 'address' ? 'text-green-500' : 'text-gray-300'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 ${
-                    step === s.key ? 'border-orange-500 bg-orange-500 text-white' :
-                    step === 'payment' && s.key === 'address' ? 'border-green-500 bg-green-500 text-white' :
-                    'border-gray-200 text-gray-400'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 ${step === s.key ? 'border-orange-500 bg-orange-500 text-white' : step === 'payment' && s.key === 'address' ? 'border-green-500 bg-green-500 text-white' : 'border-gray-200 text-gray-400'}`}>
                     {step === 'payment' && s.key === 'address' ? '✓' : s.num}
                   </div>
                   <span className="text-sm font-semibold hidden md:block">{s.label}</span>
@@ -187,22 +221,17 @@ export default function CheckoutPage() {
             <p className="text-gray-400 mb-2">Thank you for shopping with ShopBD!</p>
             <p className="text-orange-500 font-bold mb-8">{uniqueOrderId || `Order #${orderId}`}</p>
             <div className="flex gap-4 justify-center">
-              <button onClick={() => router.push('/')} className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-full transition">
-                Continue Shopping
-              </button>
-              <button onClick={() => router.push('/orders')} className="border-2 border-gray-200 hover:border-orange-500 text-gray-600 hover:text-orange-500 font-bold px-8 py-3 rounded-full transition">
-                My Orders
-              </button>
+              <button onClick={() => router.push('/')} className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-full transition">Continue Shopping</button>
+              <button onClick={() => router.push('/orders')} className="border-2 border-gray-200 hover:border-orange-500 text-gray-600 hover:text-orange-500 font-bold px-8 py-3 rounded-full transition">My Orders</button>
             </div>
           </div>
         )}
 
-        {/* Address Step */}
+        {/* Address */}
         {step === 'address' && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <h1 className="text-2xl font-black mb-6">📍 Delivery Address</h1>
 
-            {/* Cart Summary */}
             <div className="bg-orange-50 rounded-xl p-4 mb-6">
               <p className="text-sm font-semibold text-gray-600 mb-2">Order Summary ({cart.length} items)</p>
               <div className="space-y-1 mb-2">
@@ -220,61 +249,46 @@ export default function CheckoutPage() {
             </div>
 
             <div className="space-y-4">
-              {/* Name */}
               <div>
                 <label className="text-gray-600 text-sm font-semibold mb-1 block">Full Name *</label>
-                <input
-                  type="text"
-                  placeholder="Your full name"
-                  value={address.name}
+                <input type="text" placeholder="Your full name" value={address.name}
                   onChange={(e) => setAddress({ ...address, name: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                />
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100" />
               </div>
 
-              {/* Phone */}
               <div>
-                <label className="text-gray-600 text-sm font-semibold mb-1 block">Phone Number * <span className="text-orange-500">(Delivery contact)</span></label>
-                <input
-                  type="tel"
-                  placeholder="01XXXXXXXXX"
-                  value={address.phone}
+                <label className="text-gray-600 text-sm font-semibold mb-1 block">Phone Number * <span className="text-orange-500 font-normal">(Delivery contact)</span></label>
+                <input type="tel" placeholder="01XXXXXXXXX" value={address.phone}
                   onChange={(e) => setAddress({ ...address, phone: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                />
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100" />
               </div>
 
               {/* District */}
               <div className="relative">
-                <label className="text-gray-600 text-sm font-semibold mb-1 block">District * </label>
+                <label className="text-gray-600 text-sm font-semibold mb-1 block">District * <span className="text-gray-400 font-normal">(64 districts)</span></label>
                 <input
                   type="text"
-                  placeholder="Search district..."
-                  value={districtSearch || address.district}
+                  placeholder="Type to search district..."
+                  value={address.district ? address.district : districtSearch}
                   onChange={(e) => {
                     setDistrictSearch(e.target.value);
                     setAddress({ ...address, district: '', thana: '' });
+                    setThanaSearch('');
                     setShowDistrictDropdown(true);
                   }}
-                  onFocus={() => setShowDistrictDropdown(true)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                  onFocus={() => { if (!address.district) setShowDistrictDropdown(true); }}
+                  onBlur={() => setTimeout(() => setShowDistrictDropdown(false), 200)}
+                  className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-100 ${address.district ? 'border-green-400 bg-green-50 focus:border-green-400' : 'border-gray-200 focus:border-orange-500'}`}
                 />
-                {address.district && !showDistrictDropdown && (
-                  <span className="absolute right-3 top-9 text-green-500 text-sm">✓ {address.district}</span>
+                {address.district && (
+                  <button onClick={() => { setAddress({ ...address, district: '', thana: '' }); setDistrictSearch(''); setThanaSearch(''); }}
+                    className="absolute right-3 top-9 text-gray-400 hover:text-red-400 text-sm">✕</button>
                 )}
-                {showDistrictDropdown && filteredDistricts.length > 0 && (
-                  <div className="absolute z-20 w-full bg-white border border-gray-200 rounded-xl mt-1 shadow-lg max-h-48 overflow-y-auto">
+                {showDistrictDropdown && !address.district && filteredDistricts.length > 0 && (
+                  <div className="absolute z-30 w-full bg-white border border-gray-200 rounded-xl mt-1 shadow-xl max-h-52 overflow-y-auto">
                     {filteredDistricts.map(d => (
-                      <button
-                        key={d}
-                        onClick={() => {
-                          setAddress({ ...address, district: d, thana: '' });
-                          setDistrictSearch('');
-                          setThanaSearch('');
-                          setShowDistrictDropdown(false);
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-orange-50 hover:text-orange-500 transition"
-                      >
+                      <button key={d} onMouseDown={() => { setAddress({ ...address, district: d, thana: '' }); setDistrictSearch(''); setThanaSearch(''); setShowDistrictDropdown(false); }}
+                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-orange-50 hover:text-orange-500 transition border-b border-gray-50 last:border-0">
                         {d}
                       </button>
                     ))}
@@ -285,36 +299,33 @@ export default function CheckoutPage() {
               {/* Thana */}
               <div className="relative">
                 <label className="text-gray-600 text-sm font-semibold mb-1 block">
-                  Thana / Upazila * {!address.district && <span className="text-gray-400 font-normal">(Select district first)</span>}
+                  Thana / Upazila *
+                  {!address.district && <span className="text-gray-400 font-normal ml-1">(Select district first)</span>}
+                  {address.district && <span className="text-gray-400 font-normal ml-1">({getThanas(address.district).length} options)</span>}
                 </label>
                 <input
                   type="text"
-                  placeholder={address.district ? "Search thana/upazila..." : "Select district first"}
-                  value={thanaSearch || address.thana}
+                  placeholder={address.district ? `Search in ${address.district}...` : 'Select district first'}
+                  value={address.thana ? address.thana : thanaSearch}
                   disabled={!address.district}
                   onChange={(e) => {
                     setThanaSearch(e.target.value);
                     setAddress({ ...address, thana: '' });
                     setShowThanaDropdown(true);
                   }}
-                  onFocus={() => address.district && setShowThanaDropdown(true)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 disabled:bg-gray-50 disabled:text-gray-400"
+                  onFocus={() => { if (address.district && !address.thana) setShowThanaDropdown(true); }}
+                  onBlur={() => setTimeout(() => setShowThanaDropdown(false), 200)}
+                  className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-100 ${address.thana ? 'border-green-400 bg-green-50' : 'border-gray-200 focus:border-orange-500'} disabled:bg-gray-50 disabled:text-gray-400`}
                 />
-                {address.thana && !showThanaDropdown && (
-                  <span className="absolute right-3 top-9 text-green-500 text-sm">✓ {address.thana}</span>
+                {address.thana && (
+                  <button onClick={() => { setAddress({ ...address, thana: '' }); setThanaSearch(''); }}
+                    className="absolute right-3 top-9 text-gray-400 hover:text-red-400 text-sm">✕</button>
                 )}
-                {showThanaDropdown && address.district && filteredThanas.length > 0 && (
-                  <div className="absolute z-20 w-full bg-white border border-gray-200 rounded-xl mt-1 shadow-lg max-h-48 overflow-y-auto">
+                {showThanaDropdown && address.district && !address.thana && filteredThanas.length > 0 && (
+                  <div className="absolute z-30 w-full bg-white border border-gray-200 rounded-xl mt-1 shadow-xl max-h-52 overflow-y-auto">
                     {filteredThanas.map(t => (
-                      <button
-                        key={t}
-                        onClick={() => {
-                          setAddress({ ...address, thana: t });
-                          setThanaSearch('');
-                          setShowThanaDropdown(false);
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-orange-50 hover:text-orange-500 transition"
-                      >
+                      <button key={t} onMouseDown={() => { setAddress({ ...address, thana: t }); setThanaSearch(''); setShowThanaDropdown(false); }}
+                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-orange-50 hover:text-orange-500 transition border-b border-gray-50 last:border-0">
                         {t}
                       </button>
                     ))}
@@ -322,84 +333,59 @@ export default function CheckoutPage() {
                 )}
               </div>
 
-              {/* Area */}
               <div>
                 <label className="text-gray-600 text-sm font-semibold mb-1 block">Area / Village <span className="text-gray-400 font-normal">(optional)</span></label>
-                <input
-                  type="text"
-                  placeholder="e.g. Mirpur-10, Dhanmondi-32"
-                  value={address.area}
+                <input type="text" placeholder="e.g. Mirpur-10, Ward no. 5" value={address.area}
                   onChange={(e) => setAddress({ ...address, area: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                />
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100" />
               </div>
 
-              {/* Full Address */}
               <div>
-                <label className="text-gray-600 text-sm font-semibold mb-1 block">Full Address * <span className="text-orange-500">(House/Road/Block)</span></label>
-                <textarea
-                  placeholder="House no, Road no, Block, Area..."
-                  value={address.fullAddress}
-                  onChange={(e) => setAddress({ ...address, fullAddress: e.target.value })}
-                  rows={3}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                />
+                <label className="text-gray-600 text-sm font-semibold mb-1 block">Full Address * <span className="text-orange-500 font-normal">(House/Road/Block)</span></label>
+                <textarea placeholder="House no, Road no, Block..." value={address.fullAddress}
+                  onChange={(e) => setAddress({ ...address, fullAddress: e.target.value })} rows={3}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100" />
               </div>
 
-              <button
-                onClick={handleAddressSubmit}
-                disabled={loading}
-                className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 text-white font-bold py-4 rounded-2xl transition text-base"
-              >
+              <button onClick={handleAddressSubmit} disabled={loading}
+                className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 text-white font-bold py-4 rounded-2xl transition text-base">
                 {loading ? 'Processing...' : 'Continue to Payment →'}
               </button>
             </div>
           </div>
         )}
 
-        {/* Payment Step */}
+        {/* Payment */}
         {step === 'payment' && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <h1 className="text-2xl font-black mb-2">💳 Payment</h1>
             <p className="text-gray-400 text-sm mb-6">{uniqueOrderId || `Order #${orderId}`} — ৳{cartTotal().toLocaleString()}</p>
 
-            {/* Delivery Info */}
             <div className="bg-gray-50 rounded-xl p-4 mb-6 text-sm">
               <p className="font-bold text-gray-700 mb-1">📍 Delivery to:</p>
               <p className="text-gray-600">{address.name} · {address.phone}</p>
-              <p className="text-gray-500">{address.fullAddress}, {address.area && `${address.area}, `}{address.thana}, {address.district}</p>
+              <p className="text-gray-500">{address.fullAddress}{address.area ? `, ${address.area}` : ''}, {address.thana}, {address.district}</p>
             </div>
 
-            {/* Payment Methods */}
             <div className="grid grid-cols-3 gap-3 mb-6">
               {[
-                { id: 'bkash', label: 'bKash', emoji: '💳', color: 'pink', number: '01XXXXXXXXX' },
-                { id: 'nagad', label: 'Nagad', emoji: '🔶', color: 'orange', number: '01XXXXXXXXX' },
-                { id: 'cod', label: 'Cash on Delivery', emoji: '💵', color: 'green', number: null },
+                { id: 'bkash', label: 'bKash', emoji: '💳' },
+                { id: 'nagad', label: 'Nagad', emoji: '🔶' },
+                { id: 'cod', label: 'Cash on Delivery', emoji: '💵' },
               ].map((method) => (
-                <button
-                  key={method.id}
+                <button key={method.id}
                   onClick={() => { setPaymentMethod(method.id as any); setPaymentVerified(false); setTransactionId(''); }}
-                  className={`p-4 rounded-2xl border-2 text-center transition ${
-                    paymentMethod === method.id
-                      ? 'border-orange-500 bg-orange-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
+                  className={`p-4 rounded-2xl border-2 text-center transition ${paymentMethod === method.id ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'}`}>
                   <div className="text-3xl mb-2">{method.emoji}</div>
                   <div className="text-xs font-bold text-gray-700">{method.label}</div>
                 </button>
               ))}
             </div>
 
-            {/* bKash / Nagad Payment Instructions */}
             {paymentMethod !== 'cod' && (
               <div className="space-y-4 mb-6">
-                {/* Instructions */}
                 <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-                  <p className="font-bold text-blue-700 text-sm mb-2">
-                    {paymentMethod === 'bkash' ? '💳 bKash' : '🔶 Nagad'} Payment Instructions:
-                  </p>
+                  <p className="font-bold text-blue-700 text-sm mb-2">{paymentMethod === 'bkash' ? '💳 bKash' : '🔶 Nagad'} Payment Instructions:</p>
                   <ol className="text-blue-600 text-sm space-y-1 list-decimal list-inside">
                     <li>Open your {paymentMethod === 'bkash' ? 'bKash' : 'Nagad'} app</li>
                     <li>Go to <strong>Send Money</strong></li>
@@ -408,67 +394,42 @@ export default function CheckoutPage() {
                     <li>Enter it below and click Verify</li>
                   </ol>
                 </div>
-
-                {/* Phone Input */}
                 <div>
-                  <label className="text-gray-600 text-sm font-semibold mb-1 block">
-                    Your {paymentMethod === 'bkash' ? 'bKash' : 'Nagad'} Number *
-                  </label>
-                  <input
-                    type="tel"
-                    placeholder="01XXXXXXXXX"
-                    value={paymentPhone}
+                  <label className="text-gray-600 text-sm font-semibold mb-1 block">Your {paymentMethod === 'bkash' ? 'bKash' : 'Nagad'} Number *</label>
+                  <input type="tel" placeholder="01XXXXXXXXX" value={paymentPhone}
                     onChange={(e) => setPaymentPhone(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
-                  />
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
                 </div>
-
-                {/* Transaction ID */}
                 <div>
                   <label className="text-gray-600 text-sm font-semibold mb-1 block">
-                    Transaction ID *
-                    {paymentVerified && <span className="text-green-500 ml-2">✅ Verified</span>}
+                    Transaction ID * {paymentVerified && <span className="text-green-500 ml-2">✅ Verified</span>}
                   </label>
                   <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="e.g. AB1234567890"
-                      value={transactionId}
+                    <input type="text" placeholder="e.g. AB1234567890" value={transactionId}
                       onChange={(e) => { setTransactionId(e.target.value); setPaymentVerified(false); }}
                       disabled={paymentVerified}
-                      className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 disabled:bg-gray-50"
-                    />
+                      className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 disabled:bg-gray-50" />
                     {!paymentVerified && (
-                      <button
-                        onClick={handleVerifyPayment}
-                        disabled={verifyingPayment || !transactionId.trim()}
-                        className="bg-blue-500 hover:bg-blue-400 disabled:bg-gray-200 text-white font-bold px-4 py-3 rounded-xl text-sm transition whitespace-nowrap"
-                      >
-                        {verifyingPayment ? '⏳ Verifying...' : '✓ Verify'}
+                      <button onClick={handleVerifyPayment} disabled={verifyingPayment || !transactionId.trim()}
+                        className="bg-blue-500 hover:bg-blue-400 disabled:bg-gray-200 text-white font-bold px-4 py-3 rounded-xl text-sm transition whitespace-nowrap">
+                        {verifyingPayment ? '⏳...' : '✓ Verify'}
                       </button>
                     )}
                   </div>
-                  {!paymentVerified && (
-                    <p className="text-gray-400 text-xs mt-1">Enter the transaction ID from your payment confirmation</p>
-                  )}
                 </div>
               </div>
             )}
 
-            {/* COD */}
             {paymentMethod === 'cod' && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
                 <p className="font-bold text-green-700 mb-1">💵 Cash on Delivery</p>
-                <p className="text-green-600 text-sm">Pay <strong>৳{cartTotal().toLocaleString()}</strong> when your order arrives at your doorstep.</p>
+                <p className="text-green-600 text-sm">Pay <strong>৳{cartTotal().toLocaleString()}</strong> when your order arrives.</p>
                 <p className="text-green-500 text-xs mt-2">📍 {address.thana}, {address.district}</p>
               </div>
             )}
 
-            <button
-              onClick={handlePayment}
-              disabled={loading || (paymentMethod !== 'cod' && !paymentVerified)}
-              className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-4 rounded-2xl transition text-base"
-            >
+            <button onClick={handlePayment} disabled={loading || (paymentMethod !== 'cod' && !paymentVerified)}
+              className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-4 rounded-2xl transition text-base">
               {loading ? 'Processing...' : paymentMethod === 'cod' ? 'Confirm Order 🎉' : paymentVerified ? `Confirm Payment ৳${cartTotal().toLocaleString()} 🎉` : 'Verify Payment First'}
             </button>
           </div>
