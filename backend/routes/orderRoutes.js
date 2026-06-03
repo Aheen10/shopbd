@@ -112,17 +112,25 @@ router.get('/admin/all', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const orders = await prisma.order.findMany({
       include: {
-        user: { select: { name: true, email: true, phone: true } },
+        user: { select: { id: true, name: true, email: true, phone: true } },
         orderItems: { include: { product: true } }
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    // Parse deliveryAddress for each order
-    const parsedOrders = orders.map((o) => ({
-      ...o,
-      deliveryAddress: o.deliveryAddress ? JSON.parse(o.deliveryAddress) : null,
-    }));
+    // Parse deliveryAddress and merge delivery phone into user
+    const parsedOrders = orders.map((o) => {
+      const deliveryAddress = o.deliveryAddress ? JSON.parse(o.deliveryAddress) : null;
+      return {
+        ...o,
+        deliveryAddress,
+        // Merge delivery phone into user if user phone is missing
+        user: {
+          ...o.user,
+          phone: o.user.phone || o.deliveryPhone || null,
+        }
+      };
+    });
 
     res.json(parsedOrders);
   } catch (err) {
