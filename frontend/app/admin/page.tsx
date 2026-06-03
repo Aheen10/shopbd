@@ -51,7 +51,6 @@ export default function AdminPage() {
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
 
-  // Homepage settings
   const [siteSettings, setSiteSettings] = useState<any>(null);
   const [banners, setBanners] = useState<any[]>([]);
   const [trustBadges, setTrustBadges] = useState<any[]>(DEFAULT_BADGES);
@@ -118,23 +117,10 @@ export default function AdminPage() {
     }
   };
 
-  const addBanner = () => {
-    setBanners([...banners, { title: 'New Banner', subtitle: 'Banner subtitle', emoji: '🎉', bg: 'from-orange-600 to-red-600', imageUrl: null, link: '/' }]);
-  };
-
+  const addBanner = () => setBanners([...banners, { title: 'New Banner', subtitle: 'Banner subtitle', emoji: '🎉', bg: 'from-orange-600 to-red-600', imageUrl: null, link: '/' }]);
   const removeBanner = (index: number) => setBanners(banners.filter((_, i) => i !== index));
-
-  const updateBanner = (index: number, field: string, value: string) => {
-    const updated = [...banners];
-    updated[index] = { ...updated[index], [field]: value };
-    setBanners(updated);
-  };
-
-  const updateBadge = (index: number, field: string, value: string) => {
-    const updated = [...trustBadges];
-    updated[index] = { ...updated[index], [field]: value };
-    setTrustBadges(updated);
-  };
+  const updateBanner = (index: number, field: string, value: string) => { const updated = [...banners]; updated[index] = { ...updated[index], [field]: value }; setBanners(updated); };
+  const updateBadge = (index: number, field: string, value: string) => { const updated = [...trustBadges]; updated[index] = { ...updated[index], [field]: value }; setTrustBadges(updated); };
 
   const getMonthlySalesData = () => {
     return MONTHS.map((month, i) => {
@@ -151,48 +137,27 @@ export default function AdminPage() {
   const downloadSalesReport = () => {
     const doc = new jsPDF();
     const data = getMonthlySalesData();
-    doc.setFillColor(255, 107, 53);
-    doc.rect(0, 0, 210, 35, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text('ShopBD - Sales Report', 14, 20);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
+    doc.setFillColor(255, 107, 53); doc.rect(0, 0, 210, 35, 'F');
+    doc.setTextColor(255, 255, 255); doc.setFontSize(20); doc.setFont('helvetica', 'bold');
+    doc.text('ShopBD - Sales Report', 14, 20); doc.setFontSize(10); doc.setFont('helvetica', 'normal');
     doc.text(`Year: ${selectedYear}`, 14, 28);
     const totalRev = data.reduce((s, d) => s + d.revenue, 0);
     const totalOrd = data.reduce((s, d) => s + d.orders, 0);
-    doc.setTextColor(50, 50, 50);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(50, 50, 50); doc.setFontSize(11); doc.setFont('helvetica', 'bold');
     doc.text(`Total Revenue: Tk ${totalRev.toLocaleString()}`, 14, 48);
     doc.text(`Total Orders: ${totalOrd}`, 14, 56);
     let y = 70;
-    doc.setFillColor(255, 107, 53);
-    doc.rect(14, y, 182, 8, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Month', 16, y + 5.5);
-    doc.text('Orders', 65, y + 5.5);
-    doc.text('Customers', 100, y + 5.5);
-    doc.text('Revenue (Tk)', 145, y + 5.5);
+    doc.setFillColor(255, 107, 53); doc.rect(14, y, 182, 8, 'F');
+    doc.setTextColor(255, 255, 255); doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+    doc.text('Month', 16, y + 5.5); doc.text('Orders', 65, y + 5.5); doc.text('Customers', 100, y + 5.5); doc.text('Revenue (Tk)', 145, y + 5.5);
     y += 10;
     data.forEach((row, i) => {
       if (i % 2 === 0) { doc.setFillColor(255, 248, 245); doc.rect(14, y - 2, 182, 9, 'F'); }
-      doc.setTextColor(50, 50, 50);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.text(row.month, 16, y + 4);
-      doc.text(String(row.orders), 65, y + 4);
-      doc.text(String(row.customers), 100, y + 4);
-      doc.text(`Tk ${row.revenue.toLocaleString()}`, 145, y + 4);
+      doc.setTextColor(50, 50, 50); doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+      doc.text(row.month, 16, y + 4); doc.text(String(row.orders), 65, y + 4); doc.text(String(row.customers), 100, y + 4); doc.text(`Tk ${row.revenue.toLocaleString()}`, 145, y + 4);
       y += 10;
     });
-    y += 10;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(255, 107, 53);
+    y += 10; doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(255, 107, 53);
     doc.text(`Annual Total: Tk ${totalRev.toLocaleString()}`, 14, y);
     doc.save(`ShopBD-Sales-Report-${selectedYear}.pdf`);
     toast.success('Sales report downloaded! 📊');
@@ -202,8 +167,7 @@ export default function AdminPage() {
   const openEditModal = (p: any) => {
     setEditingProduct(p);
     setProductForm({ name: p.name, description: p.description || '', price: p.price, oldPrice: p.oldPrice || '', category: p.category, emoji: p.emoji, stock: p.stock, specifications: p.specifications || '' });
-    setImageFiles([]);
-    setShowProductModal(true);
+    setImageFiles([]); setShowProductModal(true);
   };
 
   const handleSaveProduct = async () => {
@@ -215,8 +179,7 @@ export default function AdminPage() {
       imageFiles.forEach(file => formData.append('images', file));
       if (editingProduct) { await productsAPI.update(editingProduct.id, formData); toast.success('Product updated! ✅'); }
       else { await productsAPI.create(formData); toast.success('Product added! ✅'); }
-      setShowProductModal(false);
-      fetchData();
+      setShowProductModal(false); fetchData();
     } catch (err: any) { toast.error(err.response?.data?.error || 'Failed to save product'); }
     finally { setSaving(false); }
   };
@@ -235,8 +198,16 @@ export default function AdminPage() {
   const totalRevenue = orders.filter((o: any) => o.status === 'paid').reduce((sum: number, o: any) => sum + o.total, 0);
   const lowStockProducts = products.filter((p: any) => p.stock <= 5);
   const warningProducts = products.filter((p: any) => p.stock > 5 && p.stock <= 10);
+
+  // Build customers map with delivery phone fallback
   const customersMap = new Map();
-  orders.forEach((o: any) => { if (o.user && !customersMap.has(o.userId)) customersMap.set(o.userId, { ...o.user, userId: o.userId }); });
+  orders.forEach((o: any) => {
+    if (o.user) {
+      const existing = customersMap.get(o.userId);
+      const phone = o.user.phone || o.deliveryPhone || existing?.phone || null;
+      customersMap.set(o.userId, { ...o.user, userId: o.userId, phone });
+    }
+  });
   const allCustomers = Array.from(customersMap.values());
   const filteredCustomers = allCustomers.filter((c: any) => !customerSearch || c.name?.toLowerCase().includes(customerSearch.toLowerCase()) || c.email?.toLowerCase().includes(customerSearch.toLowerCase()) || c.phone?.includes(customerSearch));
   const filteredOrders = orders.filter((o: any) => !orderSearch || o.uniqueId?.toLowerCase().includes(orderSearch.toLowerCase()) || o.user?.name?.toLowerCase().includes(orderSearch.toLowerCase()) || o.user?.phone?.includes(orderSearch) || o.user?.email?.toLowerCase().includes(orderSearch.toLowerCase()));
@@ -279,7 +250,6 @@ export default function AdminPage() {
           )}
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
             { label: 'Total Revenue', value: `৳${totalRevenue.toLocaleString()}`, color: 'text-orange-500' },
@@ -294,23 +264,17 @@ export default function AdminPage() {
           ))}
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto">
           {['dashboard', 'orders', 'products', 'customers', 'reports', 'homepage'].map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold capitalize transition ${activeTab === tab ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-500 hover:border-orange-500 hover:text-orange-500'}`}>
-              {tab === 'dashboard' && '📊 '}
-              {tab === 'orders' && '📦 '}
-              {tab === 'products' && '🏪 '}
-              {tab === 'customers' && '👥 '}
-              {tab === 'reports' && '📈 '}
-              {tab === 'homepage' && '🏠 '}
+              {tab === 'dashboard' && '📊 '}{tab === 'orders' && '📦 '}{tab === 'products' && '🏪 '}{tab === 'customers' && '👥 '}{tab === 'reports' && '📈 '}{tab === 'homepage' && '🏠 '}
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
         </div>
 
-        {/* Dashboard Tab */}
+        {/* Dashboard */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
             {(lowStockProducts.length > 0 || warningProducts.length > 0) && (
@@ -340,7 +304,7 @@ export default function AdminPage() {
                   {orders.slice(0, 5).map((order: any) => (
                     <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-50">
                       <td className="py-3 text-orange-500 font-bold">{order.uniqueId || `#${order.id}`}</td>
-                      <td className="py-3"><div className="font-medium">{order.user?.name || 'N/A'}</div><div className="text-gray-400 text-xs">{order.user?.phone || order.user?.email}</div></td>
+                      <td className="py-3"><div className="font-medium">{order.user?.name || 'N/A'}</div><div className="text-gray-400 text-xs">{order.user?.phone || order.deliveryPhone || order.user?.email}</div></td>
                       <td className="py-3 font-bold">৳{order.total.toLocaleString()}</td>
                       <td className="py-3"><span className={`px-2 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>{order.status}</span></td>
                       <td className="py-3 text-gray-400">{new Date(order.createdAt).toLocaleDateString()}</td>
@@ -352,7 +316,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Orders Tab */}
+        {/* Orders */}
         {activeTab === 'orders' && (
           <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
@@ -361,12 +325,24 @@ export default function AdminPage() {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead><tr className="text-gray-400 border-b border-gray-100"><th className="text-left pb-3">Order ID</th><th className="text-left pb-3">Customer</th><th className="text-left pb-3">Items</th><th className="text-left pb-3">Amount</th><th className="text-left pb-3">Payment</th><th className="text-left pb-3">Delivery</th><th className="text-left pb-3">Date</th></tr></thead>
+                <thead><tr className="text-gray-400 border-b border-gray-100"><th className="text-left pb-3">Order ID</th><th className="text-left pb-3">Customer</th><th className="text-left pb-3">Delivery Address</th><th className="text-left pb-3">Items</th><th className="text-left pb-3">Amount</th><th className="text-left pb-3">Status</th><th className="text-left pb-3">Update</th><th className="text-left pb-3">Date</th></tr></thead>
                 <tbody>
                   {filteredOrders.map((order: any) => (
                     <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-50">
                       <td className="py-3 text-orange-500 font-bold">{order.uniqueId || `#${order.id}`}</td>
-                      <td className="py-3"><div className="font-medium">{order.user?.name || 'N/A'}</div><div className="text-gray-400 text-xs">{order.user?.phone}</div><div className="text-gray-400 text-xs">{order.user?.email}</div></td>
+                      <td className="py-3">
+                        <div className="font-medium">{order.user?.name || 'N/A'}</div>
+                        <div className="text-gray-400 text-xs">{order.user?.phone || order.deliveryPhone || '-'}</div>
+                        <div className="text-gray-400 text-xs">{order.user?.email}</div>
+                      </td>
+                      <td className="py-3">
+                        {order.deliveryAddress ? (
+                          <div className="text-xs text-gray-500">
+                            <div className="font-medium text-gray-700">{order.deliveryAddress.thana}, {order.deliveryAddress.district}</div>
+                            <div className="text-gray-400 truncate max-w-32">{order.deliveryAddress.fullAddress}</div>
+                          </div>
+                        ) : <span className="text-gray-300 text-xs">—</span>}
+                      </td>
                       <td className="py-3 text-gray-500">{order.orderItems?.length} items</td>
                       <td className="py-3 font-bold">৳{order.total.toLocaleString()}</td>
                       <td className="py-3"><span className={`px-2 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>{order.status}</span></td>
@@ -389,7 +365,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Products Tab */}
+        {/* Products */}
         {activeTab === 'products' && (
           <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
             <div className="flex items-center justify-between mb-6">
@@ -426,7 +402,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Customers Tab */}
+        {/* Customers */}
         {activeTab === 'customers' && (
           <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
@@ -457,7 +433,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Reports Tab */}
+        {/* Reports */}
         {activeTab === 'reports' && (
           <div className="space-y-6">
             <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
@@ -513,7 +489,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Homepage Tab */}
+        {/* Homepage */}
         {activeTab === 'homepage' && (
           <div className="space-y-6">
             <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
@@ -538,8 +514,7 @@ export default function AdminPage() {
                           {bannerImageFiles[i] ? `✅ ${bannerImageFiles[i].name}` : banner.imageUrl ? '✅ Image uploaded' : '📷 Upload ad image'}
                         </button>
                         {(banner.imageUrl || bannerImageFiles[i]) && (
-                          <img src={bannerImageFiles[i] ? URL.createObjectURL(bannerImageFiles[i]) : `http://localhost:5000${banner.imageUrl}`}
-                            className="w-20 h-12 object-cover rounded-lg border border-gray-200" />
+                          <img src={bannerImageFiles[i] ? URL.createObjectURL(bannerImageFiles[i]) : `http://localhost:5000${banner.imageUrl}`} className="w-20 h-12 object-cover rounded-lg border border-gray-200" />
                         )}
                       </div>
                       {banner.imageUrl && !bannerImageFiles[i] && (
@@ -547,22 +522,12 @@ export default function AdminPage() {
                       )}
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-gray-500 text-xs font-medium block mb-1">Title</label>
-                        <input type="text" value={banner.title || ''} onChange={(e) => updateBanner(i, 'title', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
-                      </div>
-                      <div>
-                        <label className="text-gray-500 text-xs font-medium block mb-1">Subtitle</label>
-                        <input type="text" value={banner.subtitle || ''} onChange={(e) => updateBanner(i, 'subtitle', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
-                      </div>
+                      <div><label className="text-gray-500 text-xs font-medium block mb-1">Title</label><input type="text" value={banner.title || ''} onChange={(e) => updateBanner(i, 'title', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" /></div>
+                      <div><label className="text-gray-500 text-xs font-medium block mb-1">Subtitle</label><input type="text" value={banner.subtitle || ''} onChange={(e) => updateBanner(i, 'subtitle', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" /></div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-gray-500 text-xs font-medium block mb-1">Link (e.g. /product/5)</label>
-                        <input type="text" value={banner.link || '/'} onChange={(e) => updateBanner(i, 'link', e.target.value)} placeholder="/product/5 or /" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
-                      </div>
-                      <div>
-                        <label className="text-gray-500 text-xs font-medium block mb-1">Background (if no image)</label>
+                      <div><label className="text-gray-500 text-xs font-medium block mb-1">Link</label><input type="text" value={banner.link || '/'} onChange={(e) => updateBanner(i, 'link', e.target.value)} placeholder="/product/5 or /" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" /></div>
+                      <div><label className="text-gray-500 text-xs font-medium block mb-1">Background</label>
                         <select value={banner.bg || 'from-orange-600 to-red-600'} onChange={(e) => updateBanner(i, 'bg', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500">
                           {BG_GRADIENTS.map(bg => <option key={bg} value={bg}>{bg}</option>)}
                         </select>
@@ -578,19 +543,10 @@ export default function AdminPage() {
                 {trustBadges.map((badge: any, i: number) => (
                   <div key={i} className="border border-gray-200 rounded-xl p-4 space-y-2">
                     <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <label className="text-gray-500 text-xs font-medium block mb-1">Emoji</label>
-                        <input type="text" value={badge.emoji} onChange={(e) => updateBadge(i, 'emoji', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
-                      </div>
-                      <div className="col-span-2">
-                        <label className="text-gray-500 text-xs font-medium block mb-1">Title</label>
-                        <input type="text" value={badge.title} onChange={(e) => updateBadge(i, 'title', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
-                      </div>
+                      <div><label className="text-gray-500 text-xs font-medium block mb-1">Emoji</label><input type="text" value={badge.emoji} onChange={(e) => updateBadge(i, 'emoji', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" /></div>
+                      <div className="col-span-2"><label className="text-gray-500 text-xs font-medium block mb-1">Title</label><input type="text" value={badge.title} onChange={(e) => updateBadge(i, 'title', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" /></div>
                     </div>
-                    <div>
-                      <label className="text-gray-500 text-xs font-medium block mb-1">Subtitle</label>
-                      <input type="text" value={badge.subtitle} onChange={(e) => updateBadge(i, 'subtitle', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
-                    </div>
+                    <div><label className="text-gray-500 text-xs font-medium block mb-1">Subtitle</label><input type="text" value={badge.subtitle} onChange={(e) => updateBadge(i, 'subtitle', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" /></div>
                   </div>
                 ))}
               </div>
@@ -607,7 +563,6 @@ export default function AdminPage() {
       {showCustomerModal && selectedCustomer && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowCustomerModal(false)}>
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
-            {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-md">
@@ -622,27 +577,48 @@ export default function AdminPage() {
             </div>
 
             <div className="p-6 space-y-5">
-              {/* Contact Info */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-400 text-xs font-medium mb-1">📱 Phone</p>
-                  <p className="font-bold text-gray-800">{selectedCustomer?.phone || 'Not provided'}</p>
-                </div>
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-400 text-xs font-medium mb-1">📧 Email</p>
-                  <p className="font-bold text-gray-800 text-sm break-all">{selectedCustomer?.email || 'Not provided'}</p>
-                </div>
-              </div>
-
-              {/* Stats */}
               {(() => {
                 const customerOrders = orders.filter((o: any) => o.userId === selectedCustomer.userId);
                 const totalSpent = customerOrders.reduce((sum: number, o: any) => sum + o.total, 0);
                 const deliveredCount = customerOrders.filter((o: any) => o.status === 'delivered').length;
                 const pendingCount = customerOrders.filter((o: any) => o.status === 'pending' || o.status === 'processing').length;
 
+                // Get latest delivery phone and address from orders
+                const latestOrderWithPhone = customerOrders.find((o: any) => o.deliveryPhone);
+                const latestOrderWithAddress = customerOrders.find((o: any) => o.deliveryAddress);
+                const displayPhone = selectedCustomer?.phone || latestOrderWithPhone?.deliveryPhone;
+                const deliveryAddress = latestOrderWithAddress?.deliveryAddress;
+
                 return (
                   <>
+                    {/* Contact Info */}
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <p className="text-gray-400 text-xs font-medium mb-1">📱 Phone</p>
+                          <p className="font-bold text-gray-800">{displayPhone || 'Not provided'}</p>
+                        </div>
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <p className="text-gray-400 text-xs font-medium mb-1">📧 Email</p>
+                          <p className="font-bold text-gray-800 text-sm break-all">{selectedCustomer?.email || 'Not provided'}</p>
+                        </div>
+                      </div>
+
+                      {/* Delivery Address */}
+                      {deliveryAddress && (
+                        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                          <p className="text-blue-500 text-xs font-bold mb-2">📍 Latest Delivery Address</p>
+                          <p className="font-bold text-gray-800 text-sm">{deliveryAddress.name} · {deliveryAddress.phone}</p>
+                          <p className="text-gray-600 text-sm mt-1">{deliveryAddress.fullAddress}</p>
+                          <p className="text-gray-500 text-xs mt-1">
+                            {deliveryAddress.area && `${deliveryAddress.area}, `}
+                            {deliveryAddress.thana}, {deliveryAddress.district}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Stats */}
                     <div className="grid grid-cols-4 gap-3">
                       {[
                         { label: 'Total Orders', value: customerOrders.length, color: 'text-orange-500', bg: 'bg-orange-50' },
@@ -657,7 +633,7 @@ export default function AdminPage() {
                       ))}
                     </div>
 
-                    {/* Orders List */}
+                    {/* Orders */}
                     <div>
                       <h3 className="font-bold text-gray-800 mb-3">📦 Order History</h3>
                       {customerOrders.length === 0 ? (
@@ -669,7 +645,7 @@ export default function AdminPage() {
                         <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
                           {customerOrders.map((order: any) => (
                             <div key={order.id} className="border border-gray-100 rounded-xl p-4 hover:border-orange-200 transition bg-white">
-                              <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center justify-between mb-2">
                                 <div>
                                   <span className="text-orange-500 font-black text-sm">{order.uniqueId || `#${order.id}`}</span>
                                   <span className="text-gray-400 text-xs ml-2">{new Date(order.createdAt).toLocaleDateString()}</span>
@@ -679,6 +655,14 @@ export default function AdminPage() {
                                   <span className="font-black text-orange-500 text-sm">৳{order.total.toLocaleString()}</span>
                                 </div>
                               </div>
+
+                              {/* Delivery address per order */}
+                              {order.deliveryAddress && (
+                                <div className="text-xs text-gray-400 mb-2 bg-gray-50 rounded-lg px-3 py-1.5">
+                                  📍 {order.deliveryAddress.thana}, {order.deliveryAddress.district} · {order.deliveryPhone || order.deliveryAddress.phone}
+                                </div>
+                              )}
+
                               <div className="space-y-1.5">
                                 {order.orderItems?.map((item: any) => (
                                   <div key={item.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
@@ -715,23 +699,11 @@ export default function AdminPage() {
               <button onClick={() => setShowProductModal(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
             </div>
             <div className="space-y-4">
-              <div>
-                <label className="text-gray-600 text-sm font-medium mb-1 block">Product Name *</label>
-                <input type="text" placeholder="e.g. Non-Stick Frying Pan" value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
-              </div>
-              <div>
-                <label className="text-gray-600 text-sm font-medium mb-1 block">Description</label>
-                <textarea placeholder="Product description..." value={productForm.description} rows={3} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
-              </div>
+              <div><label className="text-gray-600 text-sm font-medium mb-1 block">Product Name *</label><input type="text" placeholder="e.g. Non-Stick Frying Pan" value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" /></div>
+              <div><label className="text-gray-600 text-sm font-medium mb-1 block">Description</label><textarea placeholder="Product description..." value={productForm.description} rows={3} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" /></div>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-gray-600 text-sm font-medium mb-1 block">Price (৳) *</label>
-                  <input type="number" placeholder="0" value={productForm.price} onChange={(e) => setProductForm({ ...productForm, price: e.target.value })} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
-                </div>
-                <div>
-                  <label className="text-gray-600 text-sm font-medium mb-1 block">Old Price (৳)</label>
-                  <input type="number" placeholder="0" value={productForm.oldPrice} onChange={(e) => setProductForm({ ...productForm, oldPrice: e.target.value })} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
-                </div>
+                <div><label className="text-gray-600 text-sm font-medium mb-1 block">Price (৳) *</label><input type="number" placeholder="0" value={productForm.price} onChange={(e) => setProductForm({ ...productForm, price: e.target.value })} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" /></div>
+                <div><label className="text-gray-600 text-sm font-medium mb-1 block">Old Price (৳)</label><input type="number" placeholder="0" value={productForm.oldPrice} onChange={(e) => setProductForm({ ...productForm, oldPrice: e.target.value })} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" /></div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -744,15 +716,9 @@ export default function AdminPage() {
                     <button onClick={() => { if (newCategory.trim()) { setCategories([...categories, newCategory.trim().toLowerCase()]); setProductForm({ ...productForm, category: newCategory.trim().toLowerCase() }); setNewCategory(''); toast.success('Category added!'); } }} className="bg-orange-500 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-orange-400 transition">+ Add</button>
                   </div>
                 </div>
-                <div>
-                  <label className="text-gray-600 text-sm font-medium mb-1 block">Stock *</label>
-                  <input type="number" placeholder="0" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
-                </div>
+                <div><label className="text-gray-600 text-sm font-medium mb-1 block">Stock *</label><input type="number" placeholder="0" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" /></div>
               </div>
-              <div>
-                <label className="text-gray-600 text-sm font-medium mb-1 block">Emoji</label>
-                <input type="text" placeholder="📦" value={productForm.emoji} onChange={(e) => setProductForm({ ...productForm, emoji: e.target.value })} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
-              </div>
+              <div><label className="text-gray-600 text-sm font-medium mb-1 block">Emoji</label><input type="text" placeholder="📦" value={productForm.emoji} onChange={(e) => setProductForm({ ...productForm, emoji: e.target.value })} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" /></div>
               <div>
                 <label className="text-gray-600 text-sm font-medium mb-1 block">Product Images (Max 5) 📷</label>
                 <input ref={fileRef} type="file" accept="image/*" multiple onChange={(e) => setImageFiles(Array.from(e.target.files || []).slice(0, 5))} className="hidden" />
