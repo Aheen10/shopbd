@@ -60,8 +60,8 @@ export const cartAPI = {
 
 // Orders API
 export const ordersAPI = {
-  place: (items: { productId: number; quantity: number }[]) =>
-    api.post('/api/orders', { items }),
+  place: (items: { productId: number; quantity: number }[], phone?: string, address?: any) =>
+    api.post('/api/orders', { items, phone, address }),
   myOrders: () => api.get('/api/orders/my'),
   allOrders: () => api.get('/api/orders/admin/all'),
   updateStatus: (id: number, status: string) =>
