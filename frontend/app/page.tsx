@@ -55,6 +55,12 @@ export default function Home() {
   const trustBadges = settings?.trustBadges || DEFAULT_BADGES;
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const searchParam = params.get('search');
+    if (searchParam) setSearch(searchParam);
+  }, []);
+
+  useEffect(() => {
     settingsAPI.get().then(res => setSettings(res.data)).catch(() => {});
   }, []);
 
