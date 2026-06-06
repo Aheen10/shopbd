@@ -4,11 +4,47 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 const path = require('path');
+const http = require('http');
+const { Server } = require('socket.io');
 require('dotenv').config();
 
 const app = express();
+const server = http.createServer(app);
 
-// CORS — must be before everything
+// Socket.io setup
+const io = new Server(server, {
+  cors: {
+    origin: ['http://localhost:3000', 'http://localhost:3001'],
+    methods: ['GET', 'POST'],
+    credentials: true,
+  }
+});
+
+// Make io accessible in routes
+app.set('io', io);
+
+// Socket.io connection
+io.on('connection', (socket) => {
+  console.log('🔌 Client connected:', socket.id);
+
+  // Join room based on role
+  socket.on('join', (data) => {
+    if (data.role === 'admin') {
+      socket.join('admin');
+      console.log('👑 Admin joined');
+    }
+    if (data.userId) {
+      socket.join(`user_${data.userId}`);
+      console.log(`👤 User ${data.userId} joined`);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('❌ Client disconnected:', socket.id);
+  });
+});
+
+// CORS
 app.use(cors({
   origin: ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true,
@@ -16,14 +52,12 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Cross-Origin headers for images
 app.use((req, res, next) => {
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
   next();
 });
 
-// Security Middleware
 app.use(helmet({
   crossOriginResourcePolicy: false,
   crossOriginEmbedderPolicy: false,
@@ -32,10 +66,8 @@ app.use(helmet({
 app.use(express.json());
 app.use(morgan('dev'));
 
-// Static folder for uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Rate Limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -43,12 +75,10 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Test Route
 app.get('/', (req, res) => {
   res.json({ message: '🚀 ShopBD API is running!', status: 'OK' });
 });
 
-// Routes
 const authRoutes = require('./routes/authRoutes');
 app.use('/api/auth', authRoutes);
 const productRoutes = require('./routes/productRoutes');
@@ -62,12 +92,11 @@ app.use('/api/payment', paymentRoutes);
 const settingsRoutes = require('./routes/settingsRoutes');
 app.use('/api/settings', settingsRoutes);
 
-// Error Middleware
 const { errorHandler, notFound } = require('./middleware/errorMiddleware');
 app.use(notFound);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
 });
