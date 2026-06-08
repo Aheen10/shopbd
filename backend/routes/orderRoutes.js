@@ -6,7 +6,6 @@ const { sendOrderConfirmation } = require('../middleware/emailService');
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Generate unique order ID
 const generateOrderId = async () => {
   const year = new Date().getFullYear();
   const count = await prisma.order.count();
@@ -26,26 +25,18 @@ router.post('/', authMiddleware, async (req, res) => {
       const product = await prisma.product.findUnique({ where: { id: item.productId } });
       if (!product) return res.status(404).json({ error: `Product ${item.productId} not found` });
       if (product.stock < item.quantity) return res.status(400).json({ error: `Insufficient stock for ${product.name}` });
-
       total += product.price * item.quantity;
       orderItems.push({ productId: item.productId, quantity: item.quantity, price: product.price });
     }
 
     const uniqueId = await generateOrderId();
 
-    // Auto-update user phone if not set
     if (phone) {
       const currentUser = await prisma.user.findUnique({ where: { id: req.user.userId } });
       if (!currentUser.phone) {
-        await prisma.user.update({
-          where: { id: req.user.userId },
-          data: { phone }
-        });
+        await prisma.user.update({ where: { id: req.user.userId }, data: { phone } });
       }
     }
-
-    // Save address to order
-    const addressStr = address ? JSON.stringify(address) : null;
 
     const order = await prisma.order.create({
       data: {
@@ -53,16 +44,31 @@ router.post('/', authMiddleware, async (req, res) => {
         total,
         uniqueId,
         deliveryPhone: phone || null,
-        deliveryAddress: addressStr,
+        deliveryAddress: address ? JSON.stringify(address) : null,
         orderItems: { create: orderItems }
       },
-      include: { orderItems: { include: { product: true } } }
+      include: { orderItems: { include: { product: true } }, user: true }
     });
 
     for (const item of items) {
       await prisma.product.update({
         where: { id: item.productId },
         data: { stock: { decrement: item.quantity } }
+      });
+    }
+
+    // 🔔 Notify admin via Socket.io
+    const io = req.app.get('io');
+    if (io) {
+      io.to('admin').emit('new_order', {
+        id: order.id,
+        uniqueId: order.uniqueId,
+        customerName: order.user?.name,
+        customerPhone: phone || order.user?.phone,
+        total: order.total,
+        itemCount: orderItems.length,
+        createdAt: order.createdAt,
+        message: `New order from ${order.user?.name}!`,
       });
     }
 
@@ -107,7 +113,7 @@ router.get('/my', authMiddleware, async (req, res) => {
   }
 });
 
-// GET ALL ORDERS (admin only)
+// GET ALL ORDERS (admin)
 router.get('/admin/all', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const orders = await prisma.order.findMany({
@@ -118,17 +124,12 @@ router.get('/admin/all', authMiddleware, adminMiddleware, async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Parse deliveryAddress and merge delivery phone into user
     const parsedOrders = orders.map((o) => {
       const deliveryAddress = o.deliveryAddress ? JSON.parse(o.deliveryAddress) : null;
       return {
         ...o,
         deliveryAddress,
-        // Merge delivery phone into user if user phone is missing
-        user: {
-          ...o.user,
-          phone: o.user.phone || o.deliveryPhone || null,
-        }
+        user: { ...o.user, phone: o.user.phone || o.deliveryPhone || null }
       };
     });
 
@@ -139,14 +140,36 @@ router.get('/admin/all', authMiddleware, adminMiddleware, async (req, res) => {
   }
 });
 
-// UPDATE ORDER STATUS (admin only)
+// UPDATE ORDER STATUS (admin)
 router.put('/:id/status', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const { status } = req.body;
     const order = await prisma.order.update({
       where: { id: parseInt(req.params.id) },
-      data: { status }
+      data: { status },
+      include: { user: true }
     });
+
+    // 🔔 Notify customer via Socket.io
+    const io = req.app.get('io');
+    if (io && order.userId) {
+      const statusMessages = {
+        processing: '⚙️ Your order is being processed!',
+        shipped: '🚚 Your order has been shipped!',
+        delivered: '📦 Your order has been delivered!',
+        paid: '✅ Your payment has been confirmed!',
+        cod_pending: '💵 COD order confirmed!',
+      };
+      const message = statusMessages[status] || `Order status updated to ${status}`;
+
+      io.to(`user_${order.userId}`).emit('order_update', {
+        orderId: order.id,
+        uniqueId: order.uniqueId,
+        status,
+        message,
+      });
+    }
+
     res.json({ message: 'Order status updated', order });
   } catch (err) {
     console.error('Update status error:', err);
