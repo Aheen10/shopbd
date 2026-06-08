@@ -6,7 +6,17 @@ import { useRouter } from 'next/navigation';
 import { useStore } from '../lib/store';
 import { translations } from '../lib/translations';
 import { productsAPI } from '../lib/api';
+import { connectSocket, getSocket } from '../lib/socket';
 import toast from 'react-hot-toast';
+
+interface Notification {
+  id: string;
+  message: string;
+  type: 'new_order' | 'order_update';
+  data: any;
+  read: boolean;
+  createdAt: Date;
+}
 
 export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
   const { user, logout, cart, language, toggleLanguage } = useStore();
@@ -15,30 +25,78 @@ export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
+  const unreadCount = notifications.filter(n => !n.read).length;
   const t = translations[language];
   const router = useRouter();
   const searchRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
   const searchTimeout = useRef<any>(null);
 
-  // Close suggestions when clicking outside
+  // Socket connection
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    if (user) {
+      connectSocket(user.id, user.role);
+      const socket = getSocket();
+
+      // Admin: new order notification
+      if (user.role === 'admin') {
+        socket.on('new_order', (data: any) => {
+          const notif: Notification = {
+            id: `order_${data.id}_${Date.now()}`,
+            message: `🛒 New order ${data.uniqueId} from ${data.customerName} — ৳${data.total.toLocaleString()}`,
+            type: 'new_order',
+            data,
+            read: false,
+            createdAt: new Date(),
+          };
+          setNotifications(prev => [notif, ...prev].slice(0, 20));
+          toast.success(`🛒 New order from ${data.customerName}!`, { duration: 5000 });
+        });
+      }
+
+      // Customer: order update notification
+      socket.on('order_update', (data: any) => {
+        const notif: Notification = {
+          id: `update_${data.orderId}_${Date.now()}`,
+          message: `${data.message} (${data.uniqueId})`,
+          type: 'order_update',
+          data,
+          read: false,
+          createdAt: new Date(),
+        };
+        setNotifications(prev => [notif, ...prev].slice(0, 20));
+        toast.success(data.message, { duration: 5000 });
+      });
+
+      return () => {
+        socket.off('new_order');
+        socket.off('order_update');
+      };
+    }
+  }, [user]);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setShowSuggestions(false);
       }
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setShowNotifications(false);
+      }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // Fetch suggestions
+  // Search suggestions
   useEffect(() => {
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     if (!searchQuery.trim() || searchQuery.length < 2) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-      return;
+      setSuggestions([]); setShowSuggestions(false); return;
     }
     searchTimeout.current = setTimeout(async () => {
       setSearchLoading(true);
@@ -46,11 +104,8 @@ export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
         const res = await productsAPI.getAll({ search: searchQuery, limit: 6 } as any);
         setSuggestions(res.data.products || []);
         setShowSuggestions(true);
-      } catch (err) {
-        setSuggestions([]);
-      } finally {
-        setSearchLoading(false);
-      }
+      } catch { setSuggestions([]); }
+      finally { setSearchLoading(false); }
     }, 300);
     return () => clearTimeout(searchTimeout.current);
   }, [searchQuery]);
@@ -63,8 +118,7 @@ export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
   };
 
   const handleSuggestionClick = (product: any) => {
-    setSearchQuery('');
-    setShowSuggestions(false);
+    setSearchQuery(''); setShowSuggestions(false);
     router.push(`/product/${product.id}`);
   };
 
@@ -74,6 +128,20 @@ export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
     setDropdownOpen(false);
   };
 
+  const markAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const handleNotifClick = (notif: Notification) => {
+    setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n));
+    setShowNotifications(false);
+    if (notif.type === 'new_order') {
+      router.push('/admin?tab=orders');
+    } else {
+      router.push(`/orders/${notif.data.uniqueId || notif.data.orderId}`);
+    }
+  };
+
   const highlightMatch = (text: string, query: string) => {
     if (!query) return text;
     const regex = new RegExp(`(${query})`, 'gi');
@@ -81,6 +149,14 @@ export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
     return parts.map((part, i) =>
       regex.test(part) ? <span key={i} className="text-orange-500 font-bold">{part}</span> : part
     );
+  };
+
+  const timeAgo = (date: Date) => {
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    return `${Math.floor(seconds / 86400)}d ago`;
   };
 
   return (
@@ -93,7 +169,7 @@ export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
             Shop<span className="text-orange-100">BD</span>
           </Link>
 
-          {/* Search with Suggestions */}
+          {/* Search */}
           <div className="flex-1 max-w-2xl hidden md:block" ref={searchRef}>
             <div className="relative">
               <input
@@ -116,62 +192,41 @@ export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
                 )}
               </button>
 
-              {/* Suggestions Dropdown */}
+              {/* Suggestions */}
               {showSuggestions && suggestions.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-50">
                   <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-                    <span className="text-xs text-gray-400 font-medium">
-                      {suggestions.length} result{suggestions.length !== 1 ? 's' : ''} found
-                    </span>
+                    <span className="text-xs text-gray-400 font-medium">{suggestions.length} result{suggestions.length !== 1 ? 's' : ''} found</span>
                     <button onClick={() => setShowSuggestions(false)} className="text-gray-300 hover:text-gray-500 text-xs">✕</button>
                   </div>
-                  {suggestions.map((product, i) => (
-                    <button
-                      key={product.id}
-                      onClick={() => handleSuggestionClick(product)}
-                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-orange-50 transition text-left border-b border-gray-50 last:border-0 group"
-                    >
-                      {/* Product Image/Emoji */}
+                  {suggestions.map((product) => (
+                    <button key={product.id} onClick={() => handleSuggestionClick(product)}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-orange-50 transition text-left border-b border-gray-50 last:border-0 group">
                       <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 flex items-center justify-center">
                         {product.imageUrl ? (
                           <img src={`http://localhost:5000${product.imageUrl}`} className="w-full h-full object-cover" alt={product.name} />
-                        ) : (
-                          <span className="text-lg">{product.emoji}</span>
-                        )}
+                        ) : <span className="text-lg">{product.emoji}</span>}
                       </div>
-
-                      {/* Product Info */}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-800 truncate group-hover:text-orange-600">
                           {highlightMatch(product.name, searchQuery)}
                         </p>
                         <p className="text-xs text-gray-400 capitalize">{product.category}</p>
                       </div>
-
-                      {/* Price */}
                       <div className="text-right flex-shrink-0">
                         <p className="text-sm font-bold text-orange-500">৳{product.price.toLocaleString()}</p>
-                        {product.oldPrice && (
-                          <p className="text-xs text-gray-400 line-through">৳{product.oldPrice.toLocaleString()}</p>
-                        )}
+                        {product.oldPrice && <p className="text-xs text-gray-400 line-through">৳{product.oldPrice.toLocaleString()}</p>}
                       </div>
-
-                      {/* Arrow */}
                       <span className="text-gray-300 group-hover:text-orange-400 ml-1">›</span>
                     </button>
                   ))}
-
-                  {/* View All */}
-                  <button
-                    onClick={handleSearch}
-                    className="w-full px-4 py-3 bg-orange-50 hover:bg-orange-100 text-orange-500 text-sm font-bold transition flex items-center justify-center gap-2"
-                  >
+                  <button onClick={handleSearch}
+                    className="w-full px-4 py-3 bg-orange-50 hover:bg-orange-100 text-orange-500 text-sm font-bold transition flex items-center justify-center gap-2">
                     🔍 View all results for "{searchQuery}"
                   </button>
                 </div>
               )}
 
-              {/* No results */}
               {showSuggestions && suggestions.length === 0 && searchQuery.length >= 2 && !searchLoading && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-2xl border border-gray-100 z-50">
                   <div className="px-4 py-6 text-center">
@@ -189,6 +244,83 @@ export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
               {language === 'en' ? '🇧🇩 বাংলা' : '🇬🇧 English'}
             </button>
 
+            {/* Notification Bell */}
+            {user && (
+              <div className="relative" ref={notifRef}>
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="relative flex items-center justify-center w-10 h-10 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold animate-pulse">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Notification Dropdown */}
+                {showNotifications && (
+                  <div className="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-gray-800 text-sm">Notifications</span>
+                        {unreadCount > 0 && (
+                          <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">{unreadCount}</span>
+                        )}
+                      </div>
+                      {unreadCount > 0 && (
+                        <button onClick={markAllRead} className="text-xs text-orange-500 hover:text-orange-600 font-semibold">
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="max-h-96 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="px-4 py-10 text-center">
+                          <div className="text-4xl mb-3">🔔</div>
+                          <p className="text-gray-400 text-sm">No notifications yet</p>
+                        </div>
+                      ) : (
+                        notifications.map((notif) => (
+                          <button
+                            key={notif.id}
+                            onClick={() => handleNotifClick(notif)}
+                            className={`w-full text-left px-4 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition ${!notif.read ? 'bg-orange-50' : ''}`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${!notif.read ? 'bg-orange-500' : 'bg-gray-200'}`} />
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm leading-snug ${!notif.read ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>
+                                  {notif.message}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">{timeAgo(notif.createdAt)}</p>
+                              </div>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+
+                    {notifications.length > 0 && (
+                      <div className="px-4 py-2 border-t border-gray-100 bg-gray-50">
+                        <button
+                          onClick={() => { setNotifications([]); setShowNotifications(false); }}
+                          className="text-xs text-gray-400 hover:text-red-400 transition"
+                        >
+                          Clear all notifications
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Cart */}
             <button onClick={onCartClick}
               className="relative flex items-center gap-2 bg-white text-orange-500 hover:bg-orange-50 font-bold px-4 py-2 rounded-lg text-sm transition">
               <span className="text-lg">🛒</span>
@@ -200,6 +332,7 @@ export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
               )}
             </button>
 
+            {/* User */}
             {user ? (
               <div className="relative">
                 <button onClick={() => setDropdownOpen(!dropdownOpen)}
