@@ -5,8 +5,8 @@ let socket: Socket | null = null;
 export const getSocket = (): Socket => {
   if (!socket) {
     socket = io('http://localhost:5000', {
-      transports: ['websocket'],
-      autoConnect: false,
+      transports: ['websocket', 'polling'],
+      autoConnect: true,
     });
   }
   return socket;
@@ -14,17 +14,27 @@ export const getSocket = (): Socket => {
 
 export const connectSocket = (userId?: number, role?: string) => {
   const s = getSocket();
-  if (!s.connected) {
-    s.connect();
-    s.on('connect', () => {
-      console.log('🔌 Socket connected');
-      s.emit('join', { userId, role });
-    });
+
+  // Remove old listeners to avoid duplicates
+  s.off('connect');
+
+  const joinRoom = () => {
+    console.log('🔌 Socket connected, joining room...', { userId, role });
+    s.emit('join', { userId, role });
+  };
+
+  if (s.connected) {
+    // Already connected, join immediately
+    joinRoom();
+  } else {
+    s.on('connect', joinRoom);
+    if (!s.connected) s.connect();
   }
 };
 
 export const disconnectSocket = () => {
-  if (socket?.connected) {
+  if (socket) {
     socket.disconnect();
+    socket = null;
   }
 };
