@@ -57,9 +57,12 @@ router.post('/', authMiddleware, async (req, res) => {
       });
     }
 
-    // 🔔 Notify admin via Socket.io
+    // 🔔 Notify admin
     const io = req.app.get('io');
+    console.log('📢 IO instance:', !!io);
     if (io) {
+      const adminRoom = io.sockets.adapter.rooms.get('admin');
+      console.log('👑 Admin room members:', adminRoom ? adminRoom.size : 0);
       io.to('admin').emit('new_order', {
         id: order.id,
         uniqueId: order.uniqueId,
@@ -70,6 +73,7 @@ router.post('/', authMiddleware, async (req, res) => {
         createdAt: order.createdAt,
         message: `New order from ${order.user?.name}!`,
       });
+      console.log('✅ new_order emitted to admin room');
     }
 
     try {
@@ -108,7 +112,6 @@ router.get('/my', authMiddleware, async (req, res) => {
     });
     res.json(orders);
   } catch (err) {
-    console.error('My orders error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -135,7 +138,6 @@ router.get('/admin/all', authMiddleware, adminMiddleware, async (req, res) => {
 
     res.json(parsedOrders);
   } catch (err) {
-    console.error('Admin orders error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -150,9 +152,13 @@ router.put('/:id/status', authMiddleware, adminMiddleware, async (req, res) => {
       include: { user: true }
     });
 
-    // 🔔 Notify customer via Socket.io
+    // 🔔 Notify customer
     const io = req.app.get('io');
+    console.log('📢 Notifying user:', order.userId);
     if (io && order.userId) {
+      const userRoom = io.sockets.adapter.rooms.get(`user_${order.userId}`);
+      console.log(`👤 User_${order.userId} room members:`, userRoom ? userRoom.size : 0);
+
       const statusMessages = {
         processing: '⚙️ Your order is being processed!',
         shipped: '🚚 Your order has been shipped!',
@@ -168,11 +174,11 @@ router.put('/:id/status', authMiddleware, adminMiddleware, async (req, res) => {
         status,
         message,
       });
+      console.log('✅ order_update emitted to user_' + order.userId);
     }
 
     res.json({ message: 'Order status updated', order });
   } catch (err) {
-    console.error('Update status error:', err);
     res.status(500).json({ error: err.message });
   }
 });
