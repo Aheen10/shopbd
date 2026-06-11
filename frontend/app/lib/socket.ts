@@ -6,29 +6,23 @@ export const getSocket = (): Socket => {
   if (!socket) {
     socket = io('http://localhost:5000', {
       transports: ['websocket', 'polling'],
-      autoConnect: true,
+      autoConnect: false,
     });
   }
   return socket;
 };
 
-export const connectSocket = (userId?: number, role?: string) => {
+export const joinRoom = (userId?: number, role?: string) => {
   const s = getSocket();
-
-  // Remove old listeners to avoid duplicates
-  s.off('connect');
-
-  const joinRoom = () => {
-    console.log('🔌 Socket connected, joining room...', { userId, role });
-    s.emit('join', { userId, role });
-  };
-
-  if (s.connected) {
-    // Already connected, join immediately
-    joinRoom();
+  if (!s.connected) {
+    s.connect();
+    s.once('connect', () => {
+      console.log('✅ Socket connected, emitting join:', { userId, role });
+      s.emit('join', { userId, role });
+    });
   } else {
-    s.on('connect', joinRoom);
-    if (!s.connected) s.connect();
+    console.log('✅ Already connected, emitting join:', { userId, role });
+    s.emit('join', { userId, role });
   }
 };
 
