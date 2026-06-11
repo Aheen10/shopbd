@@ -23,24 +23,27 @@ const io = new Server(server, {
 // Make io accessible in routes
 app.set('io', io);
 
-// Socket.io connection
 io.on('connection', (socket) => {
   console.log('🔌 Client connected:', socket.id);
 
-  // Join room based on role
   socket.on('join', (data) => {
+    // Leave all rooms first
+    socket.rooms.forEach(room => {
+      if (room !== socket.id) socket.leave(room);
+    });
+
     if (data.role === 'admin') {
       socket.join('admin');
-      console.log('👑 Admin joined');
+      console.log(`👑 Admin joined room [admin] - socket: ${socket.id}`);
     }
     if (data.userId) {
       socket.join(`user_${data.userId}`);
-      console.log(`👤 User ${data.userId} joined`);
+      console.log(`👤 User ${data.userId} joined room [user_${data.userId}]`);
     }
   });
 
   socket.on('disconnect', () => {
-    console.log('❌ Client disconnected:', socket.id);
+    console.log('❌ Disconnected:', socket.id);
   });
 });
 
