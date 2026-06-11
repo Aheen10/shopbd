@@ -23,11 +23,8 @@ const DEFAULT_BADGES = [
 ];
 
 const BG_GRADIENTS = [
-  'from-orange-600 to-red-600',
-  'from-blue-600 to-purple-600',
-  'from-green-600 to-teal-600',
-  'from-pink-600 to-rose-600',
-  'from-yellow-500 to-orange-500',
+  'from-orange-600 to-red-600', 'from-blue-600 to-purple-600',
+  'from-green-600 to-teal-600', 'from-pink-600 to-rose-600', 'from-yellow-500 to-orange-500',
 ];
 
 export default function AdminPage() {
@@ -50,6 +47,8 @@ export default function AdminPage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [showOrderModal, setShowOrderModal] = useState(false);
 
   const [siteSettings, setSiteSettings] = useState<any>(null);
   const [banners, setBanners] = useState<any[]>([]);
@@ -79,8 +78,7 @@ export default function AdminPage() {
       setOrders(ordersRes.data);
       setProducts(productsRes.data.products);
       const productCats = [...new Set(productsRes.data.products.map((p: any) => p.category))];
-      const allCats = [...new Set([...categories, ...productCats])];
-      setCategories(allCats as string[]);
+      setCategories([...new Set([...categories, ...productCats])] as string[]);
     } catch (err) {
       toast.error('Failed to load data');
     } finally {
@@ -122,17 +120,13 @@ export default function AdminPage() {
   const updateBanner = (index: number, field: string, value: string) => { const updated = [...banners]; updated[index] = { ...updated[index], [field]: value }; setBanners(updated); };
   const updateBadge = (index: number, field: string, value: string) => { const updated = [...trustBadges]; updated[index] = { ...updated[index], [field]: value }; setTrustBadges(updated); };
 
-  const getMonthlySalesData = () => {
-    return MONTHS.map((month, i) => {
-      const monthOrders = orders.filter((o: any) => {
-        const d = new Date(o.createdAt);
-        return d.getFullYear() === selectedYear && d.getMonth() === i;
-      });
-      const revenue = monthOrders.reduce((sum: number, o: any) => sum + o.total, 0);
-      const uniqueCustomers = new Set(monthOrders.map((o: any) => o.userId)).size;
-      return { month, orders: monthOrders.length, revenue, customers: uniqueCustomers };
+  const getMonthlySalesData = () => MONTHS.map((month, i) => {
+    const monthOrders = orders.filter((o: any) => {
+      const d = new Date(o.createdAt);
+      return d.getFullYear() === selectedYear && d.getMonth() === i;
     });
-  };
+    return { month, orders: monthOrders.length, revenue: monthOrders.reduce((s: number, o: any) => s + o.total, 0), customers: new Set(monthOrders.map((o: any) => o.userId)).size };
+  });
 
   const downloadSalesReport = () => {
     const doc = new jsPDF();
@@ -142,10 +136,9 @@ export default function AdminPage() {
     doc.text('ShopBD - Sales Report', 14, 20); doc.setFontSize(10); doc.setFont('helvetica', 'normal');
     doc.text(`Year: ${selectedYear}`, 14, 28);
     const totalRev = data.reduce((s, d) => s + d.revenue, 0);
-    const totalOrd = data.reduce((s, d) => s + d.orders, 0);
     doc.setTextColor(50, 50, 50); doc.setFontSize(11); doc.setFont('helvetica', 'bold');
     doc.text(`Total Revenue: Tk ${totalRev.toLocaleString()}`, 14, 48);
-    doc.text(`Total Orders: ${totalOrd}`, 14, 56);
+    doc.text(`Total Orders: ${data.reduce((s, d) => s + d.orders, 0)}`, 14, 56);
     let y = 70;
     doc.setFillColor(255, 107, 53); doc.rect(14, y, 182, 8, 'F');
     doc.setTextColor(255, 255, 255); doc.setFontSize(9); doc.setFont('helvetica', 'bold');
@@ -157,8 +150,8 @@ export default function AdminPage() {
       doc.text(row.month, 16, y + 4); doc.text(String(row.orders), 65, y + 4); doc.text(String(row.customers), 100, y + 4); doc.text(`Tk ${row.revenue.toLocaleString()}`, 145, y + 4);
       y += 10;
     });
-    y += 10; doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(255, 107, 53);
-    doc.text(`Annual Total: Tk ${totalRev.toLocaleString()}`, 14, y);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(255, 107, 53);
+    doc.text(`Annual Total: Tk ${totalRev.toLocaleString()}`, 14, y + 10);
     doc.save(`ShopBD-Sales-Report-${selectedYear}.pdf`);
     toast.success('Sales report downloaded! 📊');
   };
@@ -195,11 +188,11 @@ export default function AdminPage() {
     catch (err) { toast.error('Failed to update status'); }
   };
 
-  const totalRevenue = orders.filter((o: any) => o.status === 'paid').reduce((sum: number, o: any) => sum + o.total, 0);
+  // Total Revenue — all orders
+  const totalRevenue = orders.reduce((sum: number, o: any) => sum + o.total, 0);
   const lowStockProducts = products.filter((p: any) => p.stock <= 5);
   const warningProducts = products.filter((p: any) => p.stock > 5 && p.stock <= 10);
 
-  // Build customers map with delivery phone fallback
   const customersMap = new Map();
   orders.forEach((o: any) => {
     if (o.user) {
@@ -226,11 +219,7 @@ export default function AdminPage() {
   const monthlySalesData = getMonthlySalesData();
   const maxRevenue = Math.max(...monthlySalesData.map(d => d.revenue), 1);
 
-  if (loading) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-orange-500 text-xl animate-pulse">Loading...</div>
-    </div>
-  );
+  if (loading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="text-orange-500 text-xl animate-pulse">Loading...</div></div>;
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800">
@@ -250,6 +239,7 @@ export default function AdminPage() {
           )}
         </div>
 
+        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
             { label: 'Total Revenue', value: `৳${totalRevenue.toLocaleString()}`, color: 'text-orange-500' },
@@ -264,6 +254,7 @@ export default function AdminPage() {
           ))}
         </div>
 
+        {/* Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto">
           {['dashboard', 'orders', 'products', 'customers', 'reports', 'homepage'].map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
@@ -302,7 +293,8 @@ export default function AdminPage() {
                 <thead><tr className="text-gray-400 border-b border-gray-100"><th className="text-left pb-3">Order ID</th><th className="text-left pb-3">Customer</th><th className="text-left pb-3">Amount</th><th className="text-left pb-3">Status</th><th className="text-left pb-3">Date</th></tr></thead>
                 <tbody>
                   {orders.slice(0, 5).map((order: any) => (
-                    <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-50">
+                    <tr key={order.id} onClick={() => { setSelectedOrder(order); setShowOrderModal(true); }}
+                      className="border-b border-gray-50 hover:bg-orange-50 cursor-pointer transition">
                       <td className="py-3 text-orange-500 font-bold">{order.uniqueId || `#${order.id}`}</td>
                       <td className="py-3"><div className="font-medium">{order.user?.name || 'N/A'}</div><div className="text-gray-400 text-xs">{order.user?.phone || order.deliveryPhone || order.user?.email}</div></td>
                       <td className="py-3 font-bold">৳{order.total.toLocaleString()}</td>
@@ -325,10 +317,12 @@ export default function AdminPage() {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead><tr className="text-gray-400 border-b border-gray-100"><th className="text-left pb-3">Order ID</th><th className="text-left pb-3">Customer</th><th className="text-left pb-3">Delivery Address</th><th className="text-left pb-3">Items</th><th className="text-left pb-3">Amount</th><th className="text-left pb-3">Status</th><th className="text-left pb-3">Update</th><th className="text-left pb-3">Date</th></tr></thead>
+                <thead><tr className="text-gray-400 border-b border-gray-100"><th className="text-left pb-3">Order ID</th><th className="text-left pb-3">Customer</th><th className="text-left pb-3">Address</th><th className="text-left pb-3">Items</th><th className="text-left pb-3">Amount</th><th className="text-left pb-3">Status</th><th className="text-left pb-3">Update</th><th className="text-left pb-3">Date</th></tr></thead>
                 <tbody>
                   {filteredOrders.map((order: any) => (
-                    <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-50">
+                    <tr key={order.id}
+                      onClick={(e) => { if ((e.target as HTMLElement).tagName !== 'SELECT') { setSelectedOrder(order); setShowOrderModal(true); } }}
+                      className="border-b border-gray-50 hover:bg-orange-50 cursor-pointer transition">
                       <td className="py-3 text-orange-500 font-bold">{order.uniqueId || `#${order.id}`}</td>
                       <td className="py-3">
                         <div className="font-medium">{order.user?.name || 'N/A'}</div>
@@ -346,7 +340,7 @@ export default function AdminPage() {
                       <td className="py-3 text-gray-500">{order.orderItems?.length} items</td>
                       <td className="py-3 font-bold">৳{order.total.toLocaleString()}</td>
                       <td className="py-3"><span className={`px-2 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>{order.status}</span></td>
-                      <td className="py-3">
+                      <td className="py-3" onClick={e => e.stopPropagation()}>
                         <select value={order.status} onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)} className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-orange-500">
                           <option value="pending">Pending</option>
                           <option value="processing">Processing</option>
@@ -464,8 +458,8 @@ export default function AdminPage() {
                   {monthlySalesData.map((d, i) => (
                     <div key={i} className="flex-1 flex flex-col items-center gap-1">
                       <span className="text-xs text-gray-500 font-bold">{d.revenue > 0 ? `৳${(d.revenue / 1000).toFixed(1)}k` : ''}</span>
-                      <div className="w-full bg-orange-500 rounded-t-lg transition-all duration-500 hover:bg-orange-400 relative group" style={{ height: `${(d.revenue / maxRevenue) * 120}px`, minHeight: d.revenue > 0 ? '4px' : '0' }}>
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-10">{d.orders} orders</div>
+                      <div className="w-full bg-orange-500 rounded-t-lg hover:bg-orange-400 relative group" style={{ height: `${(d.revenue / maxRevenue) * 120}px`, minHeight: d.revenue > 0 ? '4px' : '0' }}>
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10">{d.orders} orders</div>
                       </div>
                       <span className="text-xs text-gray-400">{d.month}</span>
                     </div>
@@ -526,7 +520,7 @@ export default function AdminPage() {
                       <div><label className="text-gray-500 text-xs font-medium block mb-1">Subtitle</label><input type="text" value={banner.subtitle || ''} onChange={(e) => updateBanner(i, 'subtitle', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" /></div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                      <div><label className="text-gray-500 text-xs font-medium block mb-1">Link</label><input type="text" value={banner.link || '/'} onChange={(e) => updateBanner(i, 'link', e.target.value)} placeholder="/product/5 or /" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" /></div>
+                      <div><label className="text-gray-500 text-xs font-medium block mb-1">Link</label><input type="text" value={banner.link || '/'} onChange={(e) => updateBanner(i, 'link', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" /></div>
                       <div><label className="text-gray-500 text-xs font-medium block mb-1">Background</label>
                         <select value={banner.bg || 'from-orange-600 to-red-600'} onChange={(e) => updateBanner(i, 'bg', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500">
                           {BG_GRADIENTS.map(bg => <option key={bg} value={bg}>{bg}</option>)}
@@ -559,6 +553,100 @@ export default function AdminPage() {
         )}
       </div>
 
+      {/* Order Detail Modal */}
+      {showOrderModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowOrderModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <div>
+                <h2 className="text-xl font-black text-orange-500">{selectedOrder.uniqueId || `#${selectedOrder.id}`}</h2>
+                <p className="text-gray-400 text-sm mt-0.5">{new Date(selectedOrder.createdAt).toLocaleString()}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`px-3 py-1 rounded-full text-sm font-bold ${getStatusColor(selectedOrder.status)}`}>{selectedOrder.status}</span>
+                <button onClick={() => setShowOrderModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 text-xl transition">✕</button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Customer + Address */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-gray-400 text-xs font-medium mb-2">👤 Customer</p>
+                  <p className="font-bold text-gray-800">{selectedOrder.user?.name}</p>
+                  <p className="text-gray-500 text-sm mt-1">{selectedOrder.user?.phone || selectedOrder.deliveryPhone || '—'}</p>
+                  <p className="text-gray-400 text-xs mt-1">{selectedOrder.user?.email || '—'}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-gray-400 text-xs font-medium mb-2">📍 Delivery Address</p>
+                  {selectedOrder.deliveryAddress ? (
+                    <>
+                      <p className="font-bold text-gray-800 text-sm">{selectedOrder.deliveryAddress.name}</p>
+                      <p className="text-gray-600 text-sm mt-1">{selectedOrder.deliveryAddress.fullAddress}</p>
+                      <p className="text-gray-500 text-xs mt-1">
+                        {selectedOrder.deliveryAddress.area && `${selectedOrder.deliveryAddress.area}, `}
+                        {selectedOrder.deliveryAddress.thana}, {selectedOrder.deliveryAddress.district}
+                      </p>
+                      <p className="text-orange-500 text-xs font-semibold mt-1">📞 {selectedOrder.deliveryAddress.phone}</p>
+                    </>
+                  ) : <p className="text-gray-400 text-sm">No address provided</p>}
+                </div>
+              </div>
+
+              {/* Order Items */}
+              <div>
+                <p className="text-gray-700 font-bold mb-3">📦 Order Items ({selectedOrder.orderItems?.length})</p>
+                <div className="space-y-2">
+                  {selectedOrder.orderItems?.map((item: any) => (
+                    <div key={item.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                      <div className="w-12 h-12 rounded-xl overflow-hidden bg-white border border-gray-100 flex items-center justify-center flex-shrink-0">
+                        {item.product?.imageUrl
+                          ? <img src={`http://localhost:5000${item.product.imageUrl}`} className="w-full h-full object-cover" />
+                          : <span className="text-2xl">{item.product?.emoji}</span>}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800 text-sm">{item.product?.name}</p>
+                        <p className="text-gray-400 text-xs capitalize">{item.product?.category}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-400">×{item.quantity}</p>
+                        <p className="font-bold text-orange-500 text-sm">৳{(item.price * item.quantity).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Total + Status Update */}
+              <div className="bg-orange-50 rounded-xl p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-gray-500 text-sm">Total Amount</p>
+                  <p className="text-2xl font-black text-orange-500">৳{selectedOrder.total.toLocaleString()}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-gray-400 text-xs mb-2">Update Status</p>
+                  <select
+                    value={selectedOrder.status}
+                    onChange={async (e) => {
+                      await handleUpdateOrderStatus(selectedOrder.id, e.target.value);
+                      setSelectedOrder({ ...selectedOrder, status: e.target.value });
+                    }}
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500 bg-white"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="processing">Processing</option>
+                    <option value="shipped">Shipped</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="paid">Paid</option>
+                    <option value="cod_pending">COD Pending</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Customer Detail Modal */}
       {showCustomerModal && selectedCustomer && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowCustomerModal(false)}>
@@ -575,23 +663,18 @@ export default function AdminPage() {
               </div>
               <button onClick={() => setShowCustomerModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 text-xl transition">✕</button>
             </div>
-
             <div className="p-6 space-y-5">
               {(() => {
                 const customerOrders = orders.filter((o: any) => o.userId === selectedCustomer.userId);
                 const totalSpent = customerOrders.reduce((sum: number, o: any) => sum + o.total, 0);
                 const deliveredCount = customerOrders.filter((o: any) => o.status === 'delivered').length;
                 const pendingCount = customerOrders.filter((o: any) => o.status === 'pending' || o.status === 'processing').length;
-
-                // Get latest delivery phone and address from orders
                 const latestOrderWithPhone = customerOrders.find((o: any) => o.deliveryPhone);
                 const latestOrderWithAddress = customerOrders.find((o: any) => o.deliveryAddress);
                 const displayPhone = selectedCustomer?.phone || latestOrderWithPhone?.deliveryPhone;
                 const deliveryAddress = latestOrderWithAddress?.deliveryAddress;
-
                 return (
                   <>
-                    {/* Contact Info */}
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-3">
                         <div className="bg-gray-50 rounded-xl p-4">
@@ -603,22 +686,15 @@ export default function AdminPage() {
                           <p className="font-bold text-gray-800 text-sm break-all">{selectedCustomer?.email || 'Not provided'}</p>
                         </div>
                       </div>
-
-                      {/* Delivery Address */}
                       {deliveryAddress && (
                         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
                           <p className="text-blue-500 text-xs font-bold mb-2">📍 Latest Delivery Address</p>
                           <p className="font-bold text-gray-800 text-sm">{deliveryAddress.name} · {deliveryAddress.phone}</p>
                           <p className="text-gray-600 text-sm mt-1">{deliveryAddress.fullAddress}</p>
-                          <p className="text-gray-500 text-xs mt-1">
-                            {deliveryAddress.area && `${deliveryAddress.area}, `}
-                            {deliveryAddress.thana}, {deliveryAddress.district}
-                          </p>
+                          <p className="text-gray-500 text-xs mt-1">{deliveryAddress.area && `${deliveryAddress.area}, `}{deliveryAddress.thana}, {deliveryAddress.district}</p>
                         </div>
                       )}
                     </div>
-
-                    {/* Stats */}
                     <div className="grid grid-cols-4 gap-3">
                       {[
                         { label: 'Total Orders', value: customerOrders.length, color: 'text-orange-500', bg: 'bg-orange-50' },
@@ -632,15 +708,10 @@ export default function AdminPage() {
                         </div>
                       ))}
                     </div>
-
-                    {/* Orders */}
                     <div>
                       <h3 className="font-bold text-gray-800 mb-3">📦 Order History</h3>
                       {customerOrders.length === 0 ? (
-                        <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-xl">
-                          <p className="text-3xl mb-2">📭</p>
-                          <p className="text-sm">No orders yet</p>
-                        </div>
+                        <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-xl"><p className="text-3xl mb-2">📭</p><p className="text-sm">No orders yet</p></div>
                       ) : (
                         <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
                           {customerOrders.map((order: any) => (
@@ -655,22 +726,15 @@ export default function AdminPage() {
                                   <span className="font-black text-orange-500 text-sm">৳{order.total.toLocaleString()}</span>
                                 </div>
                               </div>
-
-                              {/* Delivery address per order */}
                               {order.deliveryAddress && (
                                 <div className="text-xs text-gray-400 mb-2 bg-gray-50 rounded-lg px-3 py-1.5">
                                   📍 {order.deliveryAddress.thana}, {order.deliveryAddress.district} · {order.deliveryPhone || order.deliveryAddress.phone}
                                 </div>
                               )}
-
                               <div className="space-y-1.5">
                                 {order.orderItems?.map((item: any) => (
                                   <div key={item.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
-                                    {item.product?.imageUrl ? (
-                                      <img src={`http://localhost:5000${item.product.imageUrl}`} className="w-6 h-6 rounded object-cover" />
-                                    ) : (
-                                      <span className="text-sm">{item.product?.emoji}</span>
-                                    )}
+                                    {item.product?.imageUrl ? <img src={`http://localhost:5000${item.product.imageUrl}`} className="w-6 h-6 rounded object-cover" /> : <span className="text-sm">{item.product?.emoji}</span>}
                                     <span className="flex-1 text-xs text-gray-600 font-medium">{item.product?.name}</span>
                                     <span className="text-xs text-gray-400">×{item.quantity}</span>
                                     <span className="text-xs font-bold text-gray-700">৳{(item.price * item.quantity).toLocaleString()}</span>
