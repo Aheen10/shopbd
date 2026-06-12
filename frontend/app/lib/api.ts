@@ -88,5 +88,12 @@ export const paymentAPI = {
     api.post('/api/payment/nagad', data),
   cod: (orderId: number) => api.post('/api/payment/cod', { orderId }),
 };
+//Reviews API
+export const reviewsAPI = {
+  getByProduct: (productId: number) => api.get(`/api/reviews/${productId}`),
+  create: (data: { productId: number; rating: number; comment?: string }) =>
+    api.post('/api/reviews', data),
+  delete: (id: number) => api.delete(`/api/reviews/${id}`),
+};
 
 export default api;
