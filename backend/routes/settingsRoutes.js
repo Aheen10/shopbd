@@ -19,6 +19,14 @@ const DEFAULT_BADGES = [
   { emoji: '💳', title: 'Secure Payment', subtitle: 'bKash, Nagad & COD' },
 ];
 
+const DEFAULT_SHIPPING = `Inside Dhaka: Delivery within 24-48 hours. Charge: ৳60
+Outside Dhaka: Delivery within 3-5 days. Charge: ৳120
+Free delivery on orders above ৳2,000`;
+
+const DEFAULT_RETURN = `Returns accepted within 7 days of delivery
+Product must be in original condition with packaging intact
+Return shipping fees apply unless product is defective`;
+
 // GET SETTINGS
 router.get('/', async (req, res) => {
   try {
@@ -30,7 +38,9 @@ router.get('/', async (req, res) => {
           trustBadges: JSON.stringify(DEFAULT_BADGES),
           shopName: 'ShopBD',
           heroTitle: 'Everything for Your Home',
-          heroSubtitle: 'Kitchen, bedroom, bathroom & more. Quality products, fast delivery.',
+          heroSubtitle: 'Kitchen, bedroom, bathroom & more.',
+          shippingPolicy: DEFAULT_SHIPPING,
+          returnPolicy: DEFAULT_RETURN,
         }
       });
     }
@@ -38,6 +48,8 @@ router.get('/', async (req, res) => {
       ...settings,
       banners: JSON.parse(settings.banners),
       trustBadges: JSON.parse(settings.trustBadges),
+      shippingPolicy: settings.shippingPolicy || DEFAULT_SHIPPING,
+      returnPolicy: settings.returnPolicy || DEFAULT_RETURN,
     });
   } catch (err) {
     console.error(err);
@@ -48,7 +60,7 @@ router.get('/', async (req, res) => {
 // UPDATE SETTINGS (admin only)
 router.put('/', authMiddleware, adminMiddleware, async (req, res) => {
   try {
-    const { banners, trustBadges, shopName, heroTitle, heroSubtitle } = req.body;
+    const { banners, trustBadges, shopName, heroTitle, heroSubtitle, shippingPolicy, returnPolicy } = req.body;
     let settings = await prisma.siteSettings.findFirst();
     if (settings) {
       settings = await prisma.siteSettings.update({
@@ -59,6 +71,8 @@ router.put('/', authMiddleware, adminMiddleware, async (req, res) => {
           shopName: shopName || undefined,
           heroTitle: heroTitle || undefined,
           heroSubtitle: heroSubtitle || undefined,
+          shippingPolicy: shippingPolicy !== undefined ? shippingPolicy : undefined,
+          returnPolicy: returnPolicy !== undefined ? returnPolicy : undefined,
         }
       });
     }
@@ -67,6 +81,8 @@ router.put('/', authMiddleware, adminMiddleware, async (req, res) => {
       ...settings,
       banners: JSON.parse(settings.banners),
       trustBadges: JSON.parse(settings.trustBadges),
+      shippingPolicy: settings.shippingPolicy || DEFAULT_SHIPPING,
+      returnPolicy: settings.returnPolicy || DEFAULT_RETURN,
     });
   } catch (err) {
     console.error(err);
@@ -78,8 +94,7 @@ router.put('/', authMiddleware, adminMiddleware, async (req, res) => {
 router.post('/banner-image', authMiddleware, adminMiddleware, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
-    const imageUrl = `/uploads/${req.file.filename}`;
-    res.json({ imageUrl });
+    res.json({ imageUrl: `/uploads/${req.file.filename}` });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
