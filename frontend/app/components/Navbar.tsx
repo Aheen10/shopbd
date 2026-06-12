@@ -393,6 +393,10 @@ export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
                       className="flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-orange-50 hover:text-orange-500 text-sm text-gray-700 transition">
                       📦 {t.myOrders}
                     </Link>
+                    <Link href="/wishlist" onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-orange-50 hover:text-orange-500 text-sm text-gray-700 transition">
+                      ❤️ Wishlist
+                    </Link>
                     <Link href="/profile" onClick={() => setDropdownOpen(false)}
                       className="flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-orange-50 hover:text-orange-500 text-sm text-gray-700 transition">
                       👤 {t.profile}
