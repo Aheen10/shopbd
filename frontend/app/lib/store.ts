@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { wishlistAPI } from './api';
 
 interface User {
   id: number;
@@ -46,10 +47,17 @@ export const useStore = create<Store>((set, get) => ({
     localStorage.setItem('shopbd_token', token);
     localStorage.setItem('shopbd_user', JSON.stringify(user));
     set({ user, token });
+
+    // Fetch and cache wishlist IDs
+    wishlistAPI.get().then(res => {
+      const ids = res.data.map((item: any) => item.productId);
+      localStorage.setItem('shopbd_wishlist_ids', JSON.stringify(ids));
+    }).catch(() => {});
   },
   logout: () => {
     localStorage.removeItem('shopbd_token');
     localStorage.removeItem('shopbd_user');
+    localStorage.removeItem('shopbd_wishlist_ids');
     set({ user: null, token: null });
   },
 
