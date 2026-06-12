@@ -1,7 +1,9 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { useStore } from '../lib/store';
+import { wishlistAPI } from '../lib/api';
 import toast from 'react-hot-toast';
 
 interface Product {
@@ -18,7 +20,21 @@ interface Product {
 
 export default function ProductCard({ product }: { product: Product }) {
   const router = useRouter();
-  const { addToCart } = useStore();
+  const { addToCart, user } = useStore();
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    // Check global wishlist cache in localStorage to avoid per-card API calls
+    try {
+      const cached = localStorage.getItem('shopbd_wishlist_ids');
+      if (cached) {
+        const ids: number[] = JSON.parse(cached);
+        setIsWishlisted(ids.includes(product.id));
+      }
+    } catch {}
+  }, [user, product.id]);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -30,6 +46,41 @@ export default function ProductCard({ product }: { product: Product }) {
       quantity: 1,
     });
     toast.success(`🛒 ${product.name} added to cart!`);
+  };
+
+  const handleToggleWishlist = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) { toast.error('Please login first'); router.push('/login'); return; }
+    if (wishlistLoading) return;
+
+    setWishlistLoading(true);
+    try {
+      if (isWishlisted) {
+        await wishlistAPI.remove(product.id);
+        setIsWishlisted(false);
+        toast.success('Removed from wishlist');
+        // update cache
+        try {
+          const cached = localStorage.getItem('shopbd_wishlist_ids');
+          const ids: number[] = cached ? JSON.parse(cached) : [];
+          localStorage.setItem('shopbd_wishlist_ids', JSON.stringify(ids.filter(id => id !== product.id)));
+        } catch {}
+      } else {
+        await wishlistAPI.add(product.id);
+        setIsWishlisted(true);
+        toast.success('❤️ Added to wishlist!');
+        try {
+          const cached = localStorage.getItem('shopbd_wishlist_ids');
+          const ids: number[] = cached ? JSON.parse(cached) : [];
+          if (!ids.includes(product.id)) ids.push(product.id);
+          localStorage.setItem('shopbd_wishlist_ids', JSON.stringify(ids));
+        } catch {}
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to update wishlist');
+    } finally {
+      setWishlistLoading(false);
+    }
   };
 
   const discount = product.oldPrice
@@ -65,13 +116,26 @@ export default function ProductCard({ product }: { product: Product }) {
           {product.emoji}
         </span>
 
+        {/* Wishlist Heart Button */}
+        <button
+          onClick={handleToggleWishlist}
+          disabled={wishlistLoading}
+          className={`absolute top-3 right-3 z-20 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+            isWishlisted
+              ? 'bg-red-500 text-white shadow-md'
+              : 'bg-white/90 text-gray-400 hover:text-red-500 shadow-sm'
+          } ${product.stock < 10 && product.stock > 0 ? 'mt-7' : ''}`}
+        >
+          <span className="text-sm">{isWishlisted ? '❤️' : '🤍'}</span>
+        </button>
+
         {discount && (
           <span className="absolute top-3 left-3 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
             -{discount}%
           </span>
         )}
         {product.stock < 10 && product.stock > 0 && (
-          <span className="absolute top-3 right-3 bg-red-500 text-white text-xs px-2 py-1 rounded-full z-10">
+          <span className="absolute top-12 right-3 bg-red-500 text-white text-xs px-2 py-1 rounded-full z-10">
             Only {product.stock} left!
           </span>
         )}
