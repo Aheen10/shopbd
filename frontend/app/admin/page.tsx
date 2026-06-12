@@ -53,6 +53,8 @@ export default function AdminPage() {
   const [siteSettings, setSiteSettings] = useState<any>(null);
   const [banners, setBanners] = useState<any[]>([]);
   const [trustBadges, setTrustBadges] = useState<any[]>(DEFAULT_BADGES);
+  const [shippingPolicy, setShippingPolicy] = useState('');
+  const [returnPolicy, setReturnPolicy] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
   const [bannerImageFiles, setBannerImageFiles] = useState<{ [key: number]: File }>({});
   const bannerFileRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
@@ -92,6 +94,8 @@ export default function AdminPage() {
       setSiteSettings(res.data);
       setBanners(res.data.banners || []);
       setTrustBadges(res.data.trustBadges || DEFAULT_BADGES);
+      setShippingPolicy(res.data.shippingPolicy || '');
+      setReturnPolicy(res.data.returnPolicy || '');
     } catch (err) {}
   };
 
@@ -104,7 +108,7 @@ export default function AdminPage() {
         const res = await settingsAPI.uploadBannerImage(file);
         updatedBanners[index] = { ...updatedBanners[index], imageUrl: res.data.imageUrl };
       }
-      await settingsAPI.update({ banners: updatedBanners, trustBadges });
+      await settingsAPI.update({ banners: updatedBanners, trustBadges, shippingPolicy, returnPolicy });
       setBanners(updatedBanners);
       setBannerImageFiles({});
       toast.success('Homepage updated! ✅');
@@ -543,6 +547,23 @@ export default function AdminPage() {
                     <div><label className="text-gray-500 text-xs font-medium block mb-1">Subtitle</label><input type="text" value={badge.subtitle} onChange={(e) => updateBadge(i, 'subtitle', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500" /></div>
                   </div>
                 ))}
+              </div>
+            </div>
+            <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+              <h2 className="text-lg font-bold mb-4">🚚 Shipping & Return Policy</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-gray-500 text-xs font-medium block mb-1">🚚 Delivery Policy (প্রতিটা line আলাদা point হবে)</label>
+                  <textarea value={shippingPolicy} onChange={(e) => setShippingPolicy(e.target.value)} rows={5}
+                    placeholder="Inside Dhaka: Delivery within 24-48 hours. Charge: ৳60\nOutside Dhaka: Delivery within 3-5 days. Charge: ৳120\nFree delivery on orders above ৳2,000"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 resize-none" />
+                </div>
+                <div>
+                  <label className="text-gray-500 text-xs font-medium block mb-1">↩️ Return Policy (প্রতিটা line আলাদা point হবে)</label>
+                  <textarea value={returnPolicy} onChange={(e) => setReturnPolicy(e.target.value)} rows={5}
+                    placeholder="Returns accepted within 7 days of delivery\nProduct must be in original condition\nReturn shipping fees apply unless product is defective"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 resize-none" />
+                </div>
               </div>
             </div>
             <button onClick={handleSaveSettings} disabled={savingSettings}
