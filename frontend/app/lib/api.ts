@@ -80,6 +80,7 @@ export const settingsAPI = {
     });
   },
 };
+
 // Payment API
 export const paymentAPI = {
   bkash: (data: { orderId: number; phone: string; amount: number }) =>
@@ -88,6 +89,14 @@ export const paymentAPI = {
     api.post('/api/payment/nagad', data),
   cod: (orderId: number) => api.post('/api/payment/cod', { orderId }),
 };
+
+// Wishlist API
+export const wishlistAPI = {
+  get: () => api.get('/api/wishlist'),
+  add: (productId: number) => api.post('/api/wishlist', { productId }),
+  remove: (productId: number) => api.delete(`/api/wishlist/${productId}`),
+};
+
 //Reviews API
 export const reviewsAPI = {
   getByProduct: (productId: number) => api.get(`/api/reviews/${productId}`),
