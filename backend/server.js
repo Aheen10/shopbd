@@ -96,6 +96,8 @@ const settingsRoutes = require('./routes/settingsRoutes');
 app.use('/api/settings', settingsRoutes);
 const reviewRoutes = require('./routes/reviewRoutes');
 app.use('/api/reviews', reviewRoutes);
+const wishlistRoutes = require('./routes/wishlistRoutes');
+app.use('/api/wishlist', wishlistRoutes);
 
 const { errorHandler, notFound } = require('./middleware/errorMiddleware');
 app.use(notFound);
