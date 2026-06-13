@@ -35,9 +35,9 @@ router.post('/bkash', authMiddleware, async (req, res) => {
     // Update order status
     await prisma.order.update({
       where: { id: parseInt(orderId) },
-      data: { status: 'paid' }
+      data: { paymentStatus: 'paid' }
     });
-
+    
     res.json({
       message: 'Payment successful',
       transactionId,
@@ -78,7 +78,7 @@ router.post('/nagad', authMiddleware, async (req, res) => {
 
     await prisma.order.update({
       where: { id: parseInt(orderId) },
-      data: { status: 'paid' }
+      data: { paymentStatus: 'paid' }
     });
 
     res.json({
@@ -104,7 +104,7 @@ router.post('/cod', authMiddleware, async (req, res) => {
 
     await prisma.order.update({
       where: { id: parseInt(orderId) },
-      data: { status: 'cod_pending' }
+      data: { paymentStatus: 'cod_pending' }
     });
 
     res.json({
@@ -125,7 +125,7 @@ router.get('/status/:orderId', authMiddleware, async (req, res) => {
       where: { id: parseInt(req.params.orderId) }
     });
     if (!order) return res.status(404).json({ error: 'Order not found' });
-    res.json({ orderId: order.id, status: order.status });
+    res.json({ orderId: order.id, status: order.status, paymentStatus: order.paymentStatus });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
