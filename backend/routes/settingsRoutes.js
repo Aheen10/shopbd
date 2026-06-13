@@ -50,6 +50,9 @@ router.get('/', async (req, res) => {
       trustBadges: JSON.parse(settings.trustBadges),
       shippingPolicy: settings.shippingPolicy || DEFAULT_SHIPPING,
       returnPolicy: settings.returnPolicy || DEFAULT_RETURN,
+      insideDhakaCharge: settings.insideDhakaCharge ?? 60,
+      outsideDhakaCharge: settings.outsideDhakaCharge ?? 120,
+      freeDeliveryAbove: settings.freeDeliveryAbove ?? 10000,
     });
   } catch (err) {
     console.error(err);
@@ -60,7 +63,7 @@ router.get('/', async (req, res) => {
 // UPDATE SETTINGS (admin only)
 router.put('/', authMiddleware, adminMiddleware, async (req, res) => {
   try {
-    const { banners, trustBadges, shopName, heroTitle, heroSubtitle, shippingPolicy, returnPolicy } = req.body;
+    const { banners, trustBadges, shopName, heroTitle, heroSubtitle, shippingPolicy, returnPolicy, insideDhakaCharge, outsideDhakaCharge, freeDeliveryAbove } = req.body;
     let settings = await prisma.siteSettings.findFirst();
     if (settings) {
       settings = await prisma.siteSettings.update({
@@ -73,6 +76,9 @@ router.put('/', authMiddleware, adminMiddleware, async (req, res) => {
           heroSubtitle: heroSubtitle || undefined,
           shippingPolicy: shippingPolicy !== undefined ? shippingPolicy : undefined,
           returnPolicy: returnPolicy !== undefined ? returnPolicy : undefined,
+          insideDhakaCharge: insideDhakaCharge !== undefined ? parseFloat(insideDhakaCharge) : undefined,
+          outsideDhakaCharge: outsideDhakaCharge !== undefined ? parseFloat(outsideDhakaCharge) : undefined,
+          freeDeliveryAbove: freeDeliveryAbove !== undefined ? parseFloat(freeDeliveryAbove) : undefined,
         }
       });
     }
@@ -83,6 +89,9 @@ router.put('/', authMiddleware, adminMiddleware, async (req, res) => {
       trustBadges: JSON.parse(settings.trustBadges),
       shippingPolicy: settings.shippingPolicy || DEFAULT_SHIPPING,
       returnPolicy: settings.returnPolicy || DEFAULT_RETURN,
+      insideDhakaCharge: settings.insideDhakaCharge ?? 60,
+      outsideDhakaCharge: settings.outsideDhakaCharge ?? 120,
+      freeDeliveryAbove: settings.freeDeliveryAbove ?? 10000,
     });
   } catch (err) {
     console.error(err);
