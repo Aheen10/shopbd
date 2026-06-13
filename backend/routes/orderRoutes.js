@@ -29,6 +29,18 @@ router.post('/', authMiddleware, async (req, res) => {
       orderItems.push({ productId: item.productId, quantity: item.quantity, price: product.price });
     }
 
+    // Calculate delivery charge
+    const settings = await prisma.siteSettings.findFirst();
+    const insideCharge = settings?.insideDhakaCharge ?? 60;
+    const outsideCharge = settings?.outsideDhakaCharge ?? 120;
+    const freeAbove = settings?.freeDeliveryAbove ?? 2000;
+
+    let deliveryCharge = 0;
+    if (total < freeAbove) {
+      deliveryCharge = address?.district === 'Dhaka' ? insideCharge : outsideCharge;
+    }
+    total += deliveryCharge;
+
     const uniqueId = await generateOrderId();
 
     if (phone) {
@@ -43,6 +55,8 @@ router.post('/', authMiddleware, async (req, res) => {
         userId: req.user.userId,
         total,
         uniqueId,
+        status: 'pending',
+        paymentStatus: 'cod_pending',
         deliveryPhone: phone || null,
         deliveryAddress: address ? JSON.stringify(address) : null,
         orderItems: { create: orderItems }
