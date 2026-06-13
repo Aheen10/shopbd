@@ -55,6 +55,9 @@ export default function AdminPage() {
   const [trustBadges, setTrustBadges] = useState<any[]>(DEFAULT_BADGES);
   const [shippingPolicy, setShippingPolicy] = useState('');
   const [returnPolicy, setReturnPolicy] = useState('');
+  const [insideDhakaCharge, setInsideDhakaCharge] = useState(60);
+  const [outsideDhakaCharge, setOutsideDhakaCharge] = useState(120);
+  const [freeDeliveryAbove, setFreeDeliveryAbove] = useState(10000);
   const [savingSettings, setSavingSettings] = useState(false);
   const [bannerImageFiles, setBannerImageFiles] = useState<{ [key: number]: File }>({});
   const bannerFileRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
@@ -96,6 +99,9 @@ export default function AdminPage() {
       setTrustBadges(res.data.trustBadges || DEFAULT_BADGES);
       setShippingPolicy(res.data.shippingPolicy || '');
       setReturnPolicy(res.data.returnPolicy || '');
+      setInsideDhakaCharge(res.data.insideDhakaCharge ?? 60);
+      setOutsideDhakaCharge(res.data.outsideDhakaCharge ?? 120);
+      setFreeDeliveryAbove(res.data.freeDeliveryAbove ?? 10000);
     } catch (err) {}
   };
 
@@ -108,7 +114,7 @@ export default function AdminPage() {
         const res = await settingsAPI.uploadBannerImage(file);
         updatedBanners[index] = { ...updatedBanners[index], imageUrl: res.data.imageUrl };
       }
-      await settingsAPI.update({ banners: updatedBanners, trustBadges, shippingPolicy, returnPolicy });
+      await settingsAPI.update({ banners: updatedBanners, trustBadges, shippingPolicy, returnPolicy, insideDhakaCharge, outsideDhakaCharge, freeDeliveryAbove });
       setBanners(updatedBanners);
       setBannerImageFiles({});
       toast.success('Homepage updated! ✅');
@@ -220,6 +226,10 @@ export default function AdminPage() {
     }
   };
 
+  const getPaymentStatusColor = (status: string) => {
+    return status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-600';
+  };
+
   const monthlySalesData = getMonthlySalesData();
   const maxRevenue = Math.max(...monthlySalesData.map(d => d.revenue), 1);
 
@@ -321,7 +331,7 @@ export default function AdminPage() {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead><tr className="text-gray-400 border-b border-gray-100"><th className="text-left pb-3">Order ID</th><th className="text-left pb-3">Customer</th><th className="text-left pb-3">Address</th><th className="text-left pb-3">Items</th><th className="text-left pb-3">Amount</th><th className="text-left pb-3">Status</th><th className="text-left pb-3">Update</th><th className="text-left pb-3">Date</th></tr></thead>
+                <thead><tr className="text-gray-400 border-b border-gray-100"><th className="text-left pb-3">Order ID</th><th className="text-left pb-3">Customer</th><th className="text-left pb-3">Address</th><th className="text-left pb-3">Items</th><th className="text-left pb-3">Amount</th><th className="text-left pb-3">Status</th><th className="text-left pb-3">Payment</th><th className="text-left pb-3">Update</th><th className="text-left pb-3">Date</th></tr></thead>
                 <tbody>
                   {filteredOrders.map((order: any) => (
                     <tr key={order.id}
@@ -344,14 +354,13 @@ export default function AdminPage() {
                       <td className="py-3 text-gray-500">{order.orderItems?.length} items</td>
                       <td className="py-3 font-bold">৳{order.total.toLocaleString()}</td>
                       <td className="py-3"><span className={`px-2 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>{order.status}</span></td>
+                      <td className="py-3"><span className={`px-2 py-1 rounded-full text-xs font-bold ${getPaymentStatusColor(order.paymentStatus)}`}>{order.paymentStatus === 'paid' ? '✅ Paid' : '💵 COD'}</span></td>
                       <td className="py-3" onClick={e => e.stopPropagation()}>
                         <select value={order.status} onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)} className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-orange-500">
                           <option value="pending">Pending</option>
                           <option value="processing">Processing</option>
                           <option value="shipped">Shipped</option>
                           <option value="delivered">Delivered</option>
-                          <option value="paid">Paid</option>
-                          <option value="cod_pending">COD Pending</option>
                         </select>
                       </td>
                       <td className="py-3 text-gray-400">{new Date(order.createdAt).toLocaleDateString()}</td>
@@ -566,6 +575,29 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
+            <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+              <h2 className="text-lg font-bold mb-4">💰 Delivery Charges</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-gray-500 text-xs font-medium block mb-1">📍 Inside Dhaka (৳)</label>
+                  <input type="number" value={insideDhakaCharge} onChange={(e) => setInsideDhakaCharge(parseFloat(e.target.value) || 0)}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
+                </div>
+                <div>
+                  <label className="text-gray-500 text-xs font-medium block mb-1">🚚 Outside Dhaka (৳)</label>
+                  <input type="number" value={outsideDhakaCharge} onChange={(e) => setOutsideDhakaCharge(parseFloat(e.target.value) || 0)}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
+                </div>
+                <div>
+                  <label className="text-gray-500 text-xs font-medium block mb-1">🎁 Free Delivery Above (৳)</label>
+                  <input type="number" value={freeDeliveryAbove} onChange={(e) => setFreeDeliveryAbove(parseFloat(e.target.value) || 0)}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
+                </div>
+              </div>
+              <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-3">
+                <p className="text-blue-600 text-xs font-medium">💡 অর্ডার total এই amount এর বেশি হলে free delivery হবে। District "Dhaka" হলে inside charge, অন্য সব district এ outside charge apply হবে।</p>
+              </div>
+            </div>
             <button onClick={handleSaveSettings} disabled={savingSettings}
               className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 text-white font-black py-4 rounded-2xl transition text-lg">
               {savingSettings ? 'Saving...' : '💾 Save Homepage Settings'}
@@ -585,6 +617,7 @@ export default function AdminPage() {
               </div>
               <div className="flex items-center gap-3">
                 <span className={`px-3 py-1 rounded-full text-sm font-bold ${getStatusColor(selectedOrder.status)}`}>{selectedOrder.status}</span>
+                <span className={`px-3 py-1 rounded-full text-sm font-bold ${getPaymentStatusColor(selectedOrder.paymentStatus)}`}>{selectedOrder.paymentStatus === 'paid' ? '✅ Paid' : '💵 COD Pending'}</span>
                 <button onClick={() => setShowOrderModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 text-xl transition">✕</button>
               </div>
             </div>
@@ -658,8 +691,6 @@ export default function AdminPage() {
                     <option value="processing">Processing</option>
                     <option value="shipped">Shipped</option>
                     <option value="delivered">Delivered</option>
-                    <option value="paid">Paid</option>
-                    <option value="cod_pending">COD Pending</option>
                   </select>
                 </div>
               </div>
