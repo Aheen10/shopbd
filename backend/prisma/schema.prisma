@@ -49,6 +49,7 @@ model Order {
   deliveryAddress String?     @db.Text
   createdAt       DateTime    @default(now())
   orderItems      OrderItem[]
+  paymentStatus String @default("cod_pending")
 }
 
 model OrderItem {
@@ -92,4 +93,7 @@ model SiteSettings {
   heroSubtitle String @default("Kitchen, bedroom, bathroom & more.")
   shippingPolicy  String? @db.Text
   returnPolicy    String? @db.Text
+  insideDhakaCharge  Float @default(60)
+  outsideDhakaCharge Float @default(120)
+  freeDeliveryAbove  Float @default(10000)
 }
