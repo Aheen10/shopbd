@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStore } from '../lib/store';
-import { ordersAPI, paymentAPI } from '../lib/api';
+import { ordersAPI, paymentAPI, settingsAPI } from '../lib/api';
 import Navbar from '../components/Navbar';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -113,6 +113,8 @@ export default function CheckoutPage() {
     fullAddress: '',
   });
 
+  const [deliveryCharges, setDeliveryCharges] = useState({ insideDhaka: 60, outsideDhaka: 120, freeAbove: 10000 });
+
   const [thanaSearch, setThanaSearch] = useState('');
   const [districtSearch, setDistrictSearch] = useState('');
   const [showDistrictDropdown, setShowDistrictDropdown] = useState(false);
@@ -125,6 +127,24 @@ export default function CheckoutPage() {
   const filteredThanas = getThanas(address.district).filter(t =>
     t.toLowerCase().includes(thanaSearch.toLowerCase())
   );
+
+  useEffect(() => {
+    settingsAPI.get().then(res => {
+      setDeliveryCharges({
+        insideDhaka: res.data.insideDhakaCharge ?? 60,
+        outsideDhaka: res.data.outsideDhakaCharge ?? 120,
+        freeAbove: res.data.freeDeliveryAbove ?? 10000,
+      });
+    }).catch(() => {});
+  }, []);
+
+  const getDeliveryCharge = () => {
+    const subtotal = cartTotal();
+    if (subtotal >= deliveryCharges.freeAbove) return 0;
+    return address.district === 'Dhaka' ? deliveryCharges.insideDhaka : deliveryCharges.outsideDhaka;
+  };
+
+  const getFinalTotal = () => cartTotal() + getDeliveryCharge();
 
   const handleAddressSubmit = async () => {
     if (!user) { toast.error('Please login first'); router.push('/login'); return; }
@@ -242,9 +262,24 @@ export default function CheckoutPage() {
                   </div>
                 ))}
               </div>
-              <div className="border-t border-orange-100 pt-2 flex justify-between font-black">
-                <span>Total</span>
-                <span className="text-orange-500">৳{cartTotal().toLocaleString()}</span>
+              <div className="border-t border-orange-100 pt-2 space-y-1.5">
+                <div className="flex justify-between text-sm">
+                  <span>Subtotal</span>
+                  <span className="font-semibold">৳{cartTotal().toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Delivery Charge {address.district && `(${address.district === 'Dhaka' ? 'Inside Dhaka' : 'Outside Dhaka'})`}</span>
+                  <span className="font-semibold">
+                    {getDeliveryCharge() === 0 ? 'FREE' : `৳${getDeliveryCharge().toLocaleString()}`}
+                  </span>
+                </div>
+                {!address.district && (
+                  <div className="text-xs text-gray-400 italic">📍 Select district to calculate delivery charge</div>
+                )}
+                <div className="border-t border-orange-100 pt-1.5 flex justify-between font-black">
+                  <span>Total</span>
+                  <span className="text-orange-500">৳{getFinalTotal().toLocaleString()}</span>
+                </div>
               </div>
             </div>
 
@@ -349,7 +384,7 @@ export default function CheckoutPage() {
 
               <button onClick={handleAddressSubmit} disabled={loading}
                 className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 text-white font-bold py-4 rounded-2xl transition text-base">
-                {loading ? 'Processing...' : 'Continue to Payment →'}
+                {loading ? 'Processing...' : 'Confirm Order & Continue to Payment →'}
               </button>
             </div>
           </div>
@@ -359,7 +394,7 @@ export default function CheckoutPage() {
         {step === 'payment' && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <h1 className="text-2xl font-black mb-2">💳 Payment</h1>
-            <p className="text-gray-400 text-sm mb-6">{uniqueOrderId || `Order #${orderId}`} — ৳{cartTotal().toLocaleString()}</p>
+            <p className="text-gray-400 text-sm mb-6">{uniqueOrderId || `Order #${orderId}`} — ৳{getFinalTotal().toLocaleString()}</p>
 
             <div className="bg-gray-50 rounded-xl p-4 mb-6 text-sm">
               <p className="font-bold text-gray-700 mb-1">📍 Delivery to:</p>
@@ -389,7 +424,7 @@ export default function CheckoutPage() {
                   <ol className="text-blue-600 text-sm space-y-1 list-decimal list-inside">
                     <li>Open your {paymentMethod === 'bkash' ? 'bKash' : 'Nagad'} app</li>
                     <li>Go to <strong>Send Money</strong></li>
-                    <li>Send <strong>৳{cartTotal().toLocaleString()}</strong> to <strong>01XXXXXXXXX</strong></li>
+                    <li>Send <strong>৳{getFinalTotal().toLocaleString()}</strong> to <strong>01XXXXXXXXX</strong></li>
                     <li>Copy the <strong>Transaction ID</strong></li>
                     <li>Enter it below and click Verify</li>
                   </ol>
@@ -423,14 +458,14 @@ export default function CheckoutPage() {
             {paymentMethod === 'cod' && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
                 <p className="font-bold text-green-700 mb-1">💵 Cash on Delivery</p>
-                <p className="text-green-600 text-sm">Pay <strong>৳{cartTotal().toLocaleString()}</strong> when your order arrives.</p>
+                <p className="text-green-600 text-sm">Pay <strong>৳{getFinalTotal().toLocaleString()}</strong> when your order arrives.</p>
                 <p className="text-green-500 text-xs mt-2">📍 {address.thana}, {address.district}</p>
               </div>
             )}
 
             <button onClick={handlePayment} disabled={loading || (paymentMethod !== 'cod' && !paymentVerified)}
               className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-4 rounded-2xl transition text-base">
-              {loading ? 'Processing...' : paymentMethod === 'cod' ? 'Confirm Order 🎉' : paymentVerified ? `Confirm Payment ৳${cartTotal().toLocaleString()} 🎉` : 'Verify Payment First'}
+              {loading ? 'Processing...' : paymentMethod === 'cod' ? 'Confirm Order 🎉' : paymentVerified ? `Confirm Payment ৳${getFinalTotal().toLocaleString()} 🎉` : 'Verify Payment First'}
             </button>
           </div>
         )}
