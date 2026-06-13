@@ -280,23 +280,33 @@ export default function OrderDetailPage() {
           <div className="space-y-4">
 
             {/* Total Summary */}
-            <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-              <h3 className="font-bold mb-4">💰 Total Summary</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Subtotal ({order.orderItems.length} items)</span>
-                  <span>৳{order.total.toLocaleString()}</span>
+            {(() => {
+              const subtotal = order.orderItems.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
+              const deliveryFee = order.total - subtotal;
+              return (
+                <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                  <h3 className="font-bold mb-4">💰 Total Summary</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Subtotal ({order.orderItems.length} items)</span>
+                      <span>৳{subtotal.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Delivery Fee</span>
+                      {deliveryFee <= 0 ? (
+                        <span className="text-green-600 font-semibold">Free</span>
+                      ) : (
+                        <span>৳{deliveryFee.toLocaleString()}</span>
+                      )}
+                    </div>
+                    <div className="border-t border-gray-100 pt-2 flex justify-between font-black text-base">
+                      <span>Total</span>
+                      <span className="text-orange-500">৳{order.total.toLocaleString()}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Delivery Fee</span>
-                  <span className="text-green-600 font-semibold">Free</span>
-                </div>
-                <div className="border-t border-gray-100 pt-2 flex justify-between font-black text-base">
-                  <span>Total</span>
-                  <span className="text-orange-500">৳{order.total.toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Delivery Address */}
             {savedAddress.address && (
