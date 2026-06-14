@@ -6,6 +6,7 @@ import { useStore } from '../lib/store';
 import { ordersAPI, paymentAPI, settingsAPI } from '../lib/api';
 import Navbar from '../components/Navbar';
 import toast, { Toaster } from 'react-hot-toast';
+import Footer from '../../components/Footer';
 
 const DISTRICTS = [
   'Dhaka', 'Gazipur', 'Narayanganj', 'Narsingdi', 'Munshiganj', 'Manikganj', 'Tangail',
@@ -208,11 +209,11 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800">
+    <div className="flex flex-col min-h-screen bg-white text-gray-800">
       <Toaster position="bottom-right" />
       <Navbar onCartClick={() => setCartOpen(true)} />
 
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="flex-1 max-w-6xl mx-auto px-4 py-8 w-full">
 
         {/* Progress */}
         {step !== 'success' && (
@@ -470,6 +471,7 @@ export default function CheckoutPage() {
           </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }
