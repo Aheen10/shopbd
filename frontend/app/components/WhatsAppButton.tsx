@@ -9,20 +9,41 @@ export default function WhatsAppButton() {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
   const buttonRef = useRef<HTMLDivElement>(null);
   const hasDragged = useRef(false);
 
+  const clampPosition = (x: number, y: number) => {
+    const maxX = Math.max(0, window.innerWidth - 60);
+    const maxY = Math.max(0, window.innerHeight - 60);
+    return { x: Math.min(Math.max(0, x), maxX), y: Math.min(Math.max(0, y), maxY) };
+  };
+
   useEffect(() => {
     // Default position — bottom right
-    setPosition({
+    let initial = {
       x: window.innerWidth - 80,
       y: window.innerHeight - 80,
-    });
+    };
 
     // Load saved position
     const saved = localStorage.getItem('shopbd_btn_pos');
-    if (saved) setPosition(JSON.parse(saved));
+    if (saved) {
+      try { initial = JSON.parse(saved); } catch {}
+    }
+
+    setPosition(clampPosition(initial.x, initial.y));
+    setMounted(true);
+  }, []);
+
+  // Re-clamp on window resize/zoom
+  useEffect(() => {
+    const handleResize = () => {
+      setPosition(prev => clampPosition(prev.x, prev.y));
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -47,17 +68,15 @@ export default function WhatsAppButton() {
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragging) return;
       hasDragged.current = true;
-      const newX = Math.min(Math.max(0, e.clientX - dragOffset.current.x), window.innerWidth - 60);
-      const newY = Math.min(Math.max(0, e.clientY - dragOffset.current.y), window.innerHeight - 60);
-      setPosition({ x: newX, y: newY });
+      const newPos = clampPosition(e.clientX - dragOffset.current.x, e.clientY - dragOffset.current.y);
+      setPosition(newPos);
     };
 
     const handleTouchMove = (e: TouchEvent) => {
       if (!dragging) return;
       hasDragged.current = true;
-      const newX = Math.min(Math.max(0, e.touches[0].clientX - dragOffset.current.x), window.innerWidth - 60);
-      const newY = Math.min(Math.max(0, e.touches[0].clientY - dragOffset.current.y), window.innerHeight - 60);
-      setPosition({ x: newX, y: newY });
+      const newPos = clampPosition(e.touches[0].clientX - dragOffset.current.x, e.touches[0].clientY - dragOffset.current.y);
+      setPosition(newPos);
     };
 
     const handleMouseUp = () => {
@@ -98,6 +117,14 @@ export default function WhatsAppButton() {
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
+  if (!mounted) return null;
+
+  // Determine if popup should open upward/leftward to stay in viewport
+  const popupWidth = 240; // w-60 = 15rem = 240px
+  const popupHeight = 280;
+  const openLeft = position.x + 60 + popupWidth > window.innerWidth;
+  const openUp = position.y - popupHeight < 0;
+
   return (
     <div
       ref={buttonRef}
@@ -106,7 +133,9 @@ export default function WhatsAppButton() {
       {/* Popup */}
       {open && (
         <div
-          className="absolute bottom-16 right-0 bg-gray-900 border border-gray-700 rounded-2xl p-4 shadow-2xl w-60"
+          className={`absolute bg-gray-900 border border-gray-700 rounded-2xl p-4 shadow-2xl w-60 ${
+            openUp ? 'bottom-16' : 'top-16'
+          } ${openLeft ? 'right-0' : 'left-0'}`}
           onClick={(e) => e.stopPropagation()}
         >
           <p className="text-white font-bold text-sm mb-1">ShopBD Support 🛒</p>
