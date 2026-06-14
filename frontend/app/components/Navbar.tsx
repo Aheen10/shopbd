@@ -195,7 +195,7 @@ export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
 
           {/* Logo */}
-          <Link href="/" className="text-2xl font-black text-white flex-shrink-0 tracking-tight">
+          <Link href="/" className="text-xl sm:text-2xl font-black text-white flex-shrink-0 tracking-tight">
             Shop<span className="text-orange-100">BD</span>
           </Link>
 
@@ -257,17 +257,18 @@ export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
           </div>
 
           {/* Right Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             <button onClick={toggleLanguage}
-              className="flex items-center gap-1 bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded-lg text-xs font-bold transition">
-              {language === 'en' ? '🇧🇩 বাংলা' : '🇬🇧 English'}
+              className="flex items-center justify-center bg-orange-600 hover:bg-orange-700 text-white w-9 h-9 sm:w-auto sm:px-3 sm:py-2 rounded-lg text-xs font-bold transition flex-shrink-0">
+              <span className="sm:hidden">{language === 'en' ? '🇧🇩' : '🇬🇧'}</span>
+              <span className="hidden sm:inline">{language === 'en' ? '🇧🇩 বাংলা' : '🇬🇧 English'}</span>
             </button>
 
             {/* Notification Bell */}
             {user && (
               <div className="relative" ref={notifRef}>
                 <button onClick={() => setShowNotifications(!showNotifications)}
-                  className="relative flex items-center justify-center w-10 h-10 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition">
+                  className="relative flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition flex-shrink-0">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
@@ -361,7 +362,7 @@ export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
 
             {/* Cart */}
             <button onClick={onCartClick}
-              className="relative flex items-center gap-2 bg-white text-orange-500 hover:bg-orange-50 font-bold px-4 py-2 rounded-lg text-sm transition">
+              className="relative flex items-center gap-2 bg-white text-orange-500 hover:bg-orange-50 font-bold w-9 h-9 sm:w-auto sm:px-4 sm:py-2 rounded-lg text-sm transition justify-center flex-shrink-0">
               <span className="text-lg">🛒</span>
               <span className="hidden md:block">{t.cart}</span>
               {cartCount > 0 && (
@@ -375,12 +376,12 @@ export default function Navbar({ onCartClick }: { onCartClick?: () => void }) {
             {user ? (
               <div className="relative">
                 <button onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded-lg transition">
+                  className="flex items-center gap-1 bg-orange-600 hover:bg-orange-700 text-white w-9 h-9 sm:w-auto sm:px-3 sm:py-2 rounded-lg transition justify-center flex-shrink-0">
                   <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center text-orange-500 text-xs font-black">
                     {user.name[0].toUpperCase()}
                   </div>
                   <span className="text-sm font-semibold hidden md:block">{user.name.split(' ')[0]}</span>
-                  <span className="text-orange-200 text-xs">▾</span>
+                  <span className="text-orange-200 text-xs hidden sm:inline">▾</span>
                 </button>
 
                 {dropdownOpen && (
