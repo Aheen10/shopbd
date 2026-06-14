@@ -6,6 +6,7 @@ import { ordersAPI } from '../../lib/api';
 import Navbar from '../../components/Navbar';
 import toast, { Toaster } from 'react-hot-toast';
 import jsPDF from 'jspdf';
+import Footer from '../../components/Footer';
 
 const ORDER_STEPS = [
   { key: 'pending', label: 'Order Placed', emoji: '📋', time: 'Order confirmed' },
@@ -146,11 +147,11 @@ export default function OrderDetailPage() {
     : {};
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800">
+    <div className="flex flex-col min-h-screen bg-white text-gray-800">
       <Toaster position="bottom-right" />
       <Navbar />
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="flex-1 max-w-6xl mx-auto px-4 py-8 w-full">
         <button
           onClick={() => router.back()}
           className="flex items-center gap-2 text-gray-400 hover:text-orange-500 transition mb-6 text-sm"
@@ -344,6 +345,7 @@ export default function OrderDetailPage() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
