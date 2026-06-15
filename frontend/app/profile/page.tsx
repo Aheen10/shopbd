@@ -6,6 +6,7 @@ import { useStore } from '../lib/store';
 import Navbar from '../components/Navbar';
 import toast, { Toaster } from 'react-hot-toast';
 import api from '../lib/api';
+import Footer from '../components/Footer';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -45,11 +46,11 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="flex flex-col min-h-screen bg-white text-gray-800">
       <Toaster position="bottom-right" />
       <Navbar onCartClick={() => setCartOpen(true)} />
 
-      <div className="max-w-5xl mx-auto px-4 py-12">
+      <div className="flex-1 max-w-6xl mx-auto px-4 py-8 w-full">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
           {/* Sidebar */}
@@ -278,6 +279,7 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
