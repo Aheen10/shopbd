@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ordersAPI } from '../lib/api';
 import Navbar from '../components/Navbar';
 import toast, { Toaster } from 'react-hot-toast';
+import Footer from '../components/Footer';
 
 const ORDER_STEPS = [
   { key: 'pending', label: 'Order Placed', emoji: '📋' },
@@ -65,11 +66,11 @@ export default function OrdersPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800">
+    <div className="flex flex-col min-h-screen bg-white text-gray-800">
       <Toaster position="bottom-right" />
       <Navbar onCartClick={() => setCartOpen(true)} />
 
-      <div className="max-w-3xl mx-auto px-4 py-12">
+      <div className="flex-1 max-w-6xl mx-auto px-4 py-8 w-full">
         <h1 className="text-3xl font-black mb-2">My <span className="text-orange-500">Orders</span></h1>
         <p className="text-gray-400 mb-8">{orders.length} order{orders.length !== 1 ? 's' : ''} found</p>
 
@@ -147,6 +148,7 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }
