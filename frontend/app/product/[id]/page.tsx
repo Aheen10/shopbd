@@ -6,6 +6,7 @@ import { productsAPI, reviewsAPI, settingsAPI } from '../../lib/api';
 import { useStore } from '../../lib/store';
 import Navbar from '../../components/Navbar';
 import toast, { Toaster } from 'react-hot-toast';
+import Footer from '../../components/Footer';
 
 export default function ProductDetailPage() {
   const router = useRouter();
@@ -118,11 +119,11 @@ export default function ProductDetailPage() {
   if (!product) return null;
 
   return (
-    <div className="min-h-screen bg-white text-gray-800">
+    <div className="flex flex-col min-h-screen bg-white text-gray-800">
       <Toaster position="bottom-right" />
       <Navbar onCartClick={() => setCartOpen(true)} />
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="flex-1 max-w-6xl mx-auto px-4 py-8 w-full">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-xs text-gray-400 mb-6">
           <button onClick={() => router.push('/')} className="hover:text-orange-500 transition">Home</button>
@@ -430,6 +431,7 @@ export default function ProductDetailPage() {
           </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }
