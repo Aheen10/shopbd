@@ -9,6 +9,7 @@ import { productsAPI, settingsAPI } from './lib/api';
 import { useStore } from './lib/store';
 import { translations } from './lib/translations';
 import { Toaster } from 'react-hot-toast';
+import Footer from './components/Footer';
 
 const CATEGORY_EMOJIS: { [key: string]: string } = {
   all: '🏪', kitchen: '🍳', home: '🏠', bedroom: '🛏️',
@@ -105,13 +106,13 @@ export default function Home() {
   useEffect(() => { const t = setTimeout(fetchProducts, 400); return () => clearTimeout(t); }, [search]);
 
   return (
-    <div className="min-h-screen bg-gray-100 text-gray-900">
+    <div className="flex flex-col min-h-screen bg-gray-100 text-gray-900 overflow-x-hidden">
       <Toaster position="bottom-right" />
       <Navbar onCartClick={() => setCartOpen(true)} />
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
 
-      <div className="max-w-[1400px] mx-auto px-3 py-4">
-        <div className="flex gap-4">
+      <div className="max-w-[1600px] mx-auto px-4 py-4 overflow-x-hidden w-full">
+        <div className="flex gap-4 flex-wrap lg:flex-nowrap w-full overflow-x-hidden">
 
           {/* ── Left Sidebar ── */}
           <div className="hidden lg:block w-64 flex-shrink-0">
@@ -143,10 +144,10 @@ export default function Home() {
           </div>
 
           {/* ── Main Content ── */}
-          <div className="flex-1 min-w-0 space-y-4">
+          <div className="flex-1 min-w-0 w-full overflow-hidden space-y-4">
 
             {/* Banner Slider */}
-            <div className="relative rounded-xl overflow-hidden h-56 md:h-80 shadow-sm">
+            <div className="relative rounded-xl overflow-hidden h-48 sm:h-56 md:h-80 shadow-sm w-full max-w-full">
               {banners.map((banner: any, i: number) => (
                 <div key={i}
                   onClick={() => banner.link && banner.link !== '/' && router.push(banner.link)}
@@ -155,12 +156,12 @@ export default function Home() {
                   {banner.imageUrl ? (
                     <div className="relative w-full h-full">
                       <img src={`http://localhost:5000${banner.imageUrl}`} className="w-full h-full object-cover" alt={banner.title} />
-                      <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent flex items-center px-12">
-                        <div>
-                          <h2 className="text-3xl md:text-5xl font-black text-white mb-2 drop-shadow-lg">{banner.title}</h2>
-                          <p className="text-white/90 text-base mb-5 drop-shadow">{banner.subtitle}</p>
+                      <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent flex items-center px-4 sm:px-8 md:px-12">
+                        <div className="max-w-[80%]">
+                          <h2 className="text-xl sm:text-3xl md:text-5xl font-black text-white mb-1 sm:mb-2 drop-shadow-lg leading-tight">{banner.title}</h2>
+                          <p className="text-white/90 text-xs sm:text-base mb-3 sm:mb-5 drop-shadow line-clamp-2">{banner.subtitle}</p>
                           {banner.link && banner.link !== '/' && (
-                            <span className="bg-orange-500 text-white font-bold px-8 py-3 rounded-full text-sm inline-block shadow-lg">
+                            <span className="bg-orange-500 text-white font-bold px-4 sm:px-8 py-1.5 sm:py-3 rounded-full text-xs sm:text-sm inline-block shadow-lg">
                               Shop Now →
                             </span>
                           )}
@@ -168,21 +169,21 @@ export default function Home() {
                       </div>
                     </div>
                   ) : (
-                    <div className={`w-full h-full bg-gradient-to-r ${banner.bg} flex items-center justify-between px-12 relative overflow-hidden`}>
-                      <div className="absolute inset-0 opacity-10">
+                    <div className={`w-full h-full bg-gradient-to-r ${banner.bg} flex items-center justify-between px-4 sm:px-8 md:px-12 relative overflow-hidden`}>
+                      <div className="absolute inset-0 opacity-10 overflow-hidden">
                         <div className="absolute -top-10 -right-10 w-64 h-64 rounded-full bg-white"></div>
                         <div className="absolute -bottom-10 right-32 w-48 h-48 rounded-full bg-white"></div>
                       </div>
-                      <div className="relative z-10">
-                        <p className="text-white/70 text-xs font-bold uppercase tracking-widest mb-3">ShopBD Exclusive</p>
-                        <h2 className="text-3xl md:text-5xl font-black text-white mb-3 leading-tight">{banner.title}</h2>
-                        <p className="text-white/80 text-base mb-6">{banner.subtitle}</p>
+                      <div className="relative z-10 max-w-[75%] sm:max-w-none">
+                        <p className="text-white/70 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-1 sm:mb-3">ShopBD Exclusive</p>
+                        <h2 className="text-xl sm:text-3xl md:text-5xl font-black text-white mb-1 sm:mb-3 leading-tight">{banner.title}</h2>
+                        <p className="text-white/80 text-xs sm:text-base mb-3 sm:mb-6 line-clamp-2">{banner.subtitle}</p>
                         <button onClick={e => { e.stopPropagation(); document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' }); }}
-                          className="bg-white text-gray-800 font-bold px-8 py-3 rounded-full text-sm hover:bg-gray-50 transition shadow-lg">
+                          className="bg-white text-gray-800 font-bold px-4 sm:px-8 py-1.5 sm:py-3 rounded-full text-xs sm:text-sm hover:bg-gray-50 transition shadow-lg">
                           Shop Now →
                         </button>
                       </div>
-                      <span className="text-[10rem] md:text-[14rem] opacity-20 relative z-10 select-none">{banner.emoji}</span>
+                      <span className="hidden sm:block text-[10rem] md:text-[14rem] opacity-20 relative z-10 select-none flex-shrink-0">{banner.emoji}</span>
                     </div>
                   )}
                 </div>
@@ -194,19 +195,19 @@ export default function Home() {
                 ))}
               </div>
               <button onClick={() => setCurrentBanner(p => (p - 1 + banners.length) % banners.length)}
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center text-gray-700 shadow-md transition z-10 text-lg font-bold">‹</button>
+                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center text-gray-700 shadow-md transition z-10 text-base sm:text-lg font-bold">‹</button>
               <button onClick={() => setCurrentBanner(p => (p + 1) % banners.length)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center text-gray-700 shadow-md transition z-10 text-lg font-bold">›</button>
+                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center text-gray-700 shadow-md transition z-10 text-base sm:text-lg font-bold">›</button>
             </div>
 
             {/* Trust Badges */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {trustBadges.map((badge: any, i: number) => (
-                <div key={i} className="bg-white rounded-xl px-4 py-4 flex items-center gap-3 border border-gray-200 shadow-sm hover:shadow-md hover:border-orange-200 transition-all">
-                  <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">{badge.emoji}</div>
-                  <div>
-                    <p className="font-bold text-sm text-gray-800">{badge.title}</p>
-                    <p className="text-gray-500 text-xs leading-tight mt-0.5">{badge.subtitle}</p>
+                <div key={i} className="bg-white rounded-xl px-2 py-3 flex items-center gap-2 border border-gray-200 shadow-sm hover:shadow-md hover:border-orange-200 transition-all min-w-0 overflow-hidden">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-50 rounded-xl flex items-center justify-center text-xl sm:text-2xl flex-shrink-0">{badge.emoji}</div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-xs sm:text-sm text-gray-800 truncate">{badge.title}</p>
+                    <p className="text-gray-500 text-xs leading-tight mt-0.5 line-clamp-1">{badge.subtitle}</p>
                   </div>
                 </div>
               ))}
@@ -216,7 +217,7 @@ export default function Home() {
             <div id="products" className="bg-white rounded-xl border border-gray-200 shadow-sm">
 
               {/* Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-5 py-4 border-b border-gray-100">
                 <div className="flex items-center gap-3">
                   <div className="w-1.5 h-7 bg-orange-500 rounded-full"></div>
                   <h2 className="font-bold text-gray-800 text-lg">
@@ -238,7 +239,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="p-5">
+              <div className="p-3 sm:p-5">
                 {/* Search */}
                 <div className="relative mb-5">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
@@ -298,7 +299,7 @@ export default function Home() {
                       className="mt-4 text-orange-500 font-semibold hover:underline text-sm">Clear filters</button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                     {products.map((product: any) => (
                       <ProductCard key={product.id} product={product} />
                     ))}
@@ -325,6 +326,7 @@ export default function Home() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
