@@ -132,6 +132,11 @@ export default function LoginPage() {
               >
                 {loading ? 'Please wait...' : 'Sign In'}
               </button>
+              <div className="text-right mt-2">
+                <Link href="/forgot-password" className="text-orange-500 hover:text-orange-400 text-xs font-semibold">
+                  Forgot Password?
+                </Link>
+              </div>
             </div>
           )}
 
