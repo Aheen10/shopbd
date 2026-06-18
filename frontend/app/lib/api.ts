@@ -29,6 +29,10 @@ export const authAPI = {
   profile: () => api.get('/api/auth/profile'),
   updateProfile: (data: { name: string; phone?: string }) =>
     api.put('/api/auth/profile', data),
+  forgotPasswordEmail: (email: string) => api.post('/api/auth/forgot-password/email', { email }),
+  forgotPasswordPhone: (phone: string) => api.post('/api/auth/forgot-password/phone', { phone }),
+  resetPassword: (target: string, code: string, newPassword: string) =>
+    api.post('/api/auth/reset-password', { target, code, newPassword }),
 };
 
 // Products API
