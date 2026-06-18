@@ -6,7 +6,7 @@ import { useStore } from '../lib/store';
 import { ordersAPI, paymentAPI, settingsAPI } from '../lib/api';
 import Navbar from '../components/Navbar';
 import toast, { Toaster } from 'react-hot-toast';
-import Footer from '../../components/Footer';
+import Footer from '../components/Footer';
 
 const DISTRICTS = [
   'Dhaka', 'Gazipur', 'Narayanganj', 'Narsingdi', 'Munshiganj', 'Manikganj', 'Tangail',
