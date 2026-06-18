@@ -97,3 +97,13 @@ model SiteSettings {
   outsideDhakaCharge Float @default(120)
   freeDeliveryAbove  Float @default(10000)
 }
+
+model OTP {
+  id        Int      @id @default(autoincrement())
+  target    String   // email or phone
+  code      String
+  type      String   // 'email' or 'phone'
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
