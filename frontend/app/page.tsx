@@ -93,11 +93,9 @@ export default function Home() {
         page,
         minPrice: priceRange.min || undefined,
         maxPrice: priceRange.max || undefined,
+        sortBy: sortBy !== 'newest' ? sortBy : undefined,
       });
-      let sorted = res.data.products;
-      if (sortBy === 'price_low') sorted = [...sorted].sort((a: any, b: any) => a.price - b.price);
-      if (sortBy === 'price_high') sorted = [...sorted].sort((a: any, b: any) => b.price - a.price);
-      setProducts(sorted);
+      setProducts(res.data.products);
       setTotalPages(res.data.totalPages);
     } catch (err) {} finally { setLoading(false); }
   };
