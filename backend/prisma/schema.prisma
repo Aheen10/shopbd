@@ -18,12 +18,13 @@ model User {
   orders    Order[]
   reviews   Review[]
   wishlist  Wishlist[]
+  returnRequests ReturnRequest[]
 }
 
 model Product {
   id             Int         @id @default(autoincrement())
   name           String
-  description    String?
+  description    String?  @db.Text
   price          Float
   oldPrice       Float?
   category       String
@@ -50,6 +51,7 @@ model Order {
   createdAt       DateTime    @default(now())
   orderItems      OrderItem[]
   paymentStatus String @default("cod_pending")
+  returnRequests ReturnRequest[]
 }
 
 model OrderItem {
@@ -106,4 +108,16 @@ model OTP {
   expiresAt DateTime
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+model ReturnRequest {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  order     Order    @relation(fields: [orderId], references: [id])
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  reason    String   @db.Text
+  status    String   @default("pending")
+  adminNote String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
