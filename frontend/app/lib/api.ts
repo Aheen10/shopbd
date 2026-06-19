@@ -101,6 +101,15 @@ export const wishlistAPI = {
   remove: (productId: number) => api.delete(`/api/wishlist/${productId}`),
 };
 
+// Returns API
+export const returnsAPI = {
+  create: (orderId: number, reason: string) => api.post('/api/returns', { orderId, reason }),
+  myReturns: () => api.get('/api/returns/my'),
+  allReturns: () => api.get('/api/returns/admin/all'),
+  updateStatus: (id: number, status: string, adminNote?: string) =>
+    api.put(`/api/returns/${id}/status`, { status, adminNote }),
+};
+
 //Reviews API
 export const reviewsAPI = {
   getByProduct: (productId: number) => api.get(`/api/reviews/${productId}`),
