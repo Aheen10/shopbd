@@ -3,9 +3,9 @@ const { PrismaClient } = require('@prisma/client');
 const Joi = require('joi');
 const { authMiddleware, adminMiddleware } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
-
 const router = express.Router();
 const prisma = new PrismaClient();
+
 
 // Validation Schema
 const productSchema = Joi.object({
@@ -22,7 +22,7 @@ const productSchema = Joi.object({
 // GET ALL PRODUCTS (with search & filter)
 router.get('/', async (req, res) => {
   try {
-    const { search, category, minPrice, maxPrice, page = 1, limit = 12 } = req.query;
+    const { search, category, minPrice, maxPrice, page = 1, limit = 12, sortBy } = req.query;
 
     const where = {};
     if (search) where.name = { contains: search };
@@ -40,7 +40,11 @@ router.get('/', async (req, res) => {
         where,
         skip,
         take: parseInt(limit),
-        orderBy: { createdAt: 'desc' }
+        orderBy: sortBy === 'price_low'
+          ? { price: 'asc' }
+          : sortBy === 'price_high'
+          ? { price: 'desc' }
+          : { createdAt: 'desc' }
       }),
       prisma.product.count({ where })
     ]);
