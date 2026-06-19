@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStore } from '../lib/store';
-import { ordersAPI, productsAPI, settingsAPI } from '../lib/api';
 import Navbar from '../components/Navbar';
 import toast, { Toaster } from 'react-hot-toast';
 import jsPDF from 'jspdf';
+import { ordersAPI, productsAPI, settingsAPI, returnsAPI } from '../lib/api';
 
 const EMPTY_PRODUCT = {
   name: '', description: '', price: '', oldPrice: '',
@@ -49,7 +49,10 @@ export default function AdminPage() {
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
-
+  const [returns, setReturns] = useState<any[]>([]);
+  const [selectedReturn, setSelectedReturn] = useState<any>(null);
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [returnNote, setReturnNote] = useState('');
   const [siteSettings, setSiteSettings] = useState<any>(null);
   const [banners, setBanners] = useState<any[]>([]);
   const [trustBadges, setTrustBadges] = useState<any[]>(DEFAULT_BADGES);
@@ -76,12 +79,14 @@ export default function AdminPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [ordersRes, productsRes] = await Promise.all([
+      const [ordersRes, productsRes, returnsRes] = await Promise.all([
         ordersAPI.allOrders(),
         productsAPI.getAll({ page: 1 }),
+        returnsAPI.allReturns(),
       ]);
       setOrders(ordersRes.data);
       setProducts(productsRes.data.products);
+      setReturns(returnsRes.data);
       const productCats = [...new Set(productsRes.data.products.map((p: any) => p.category))];
       setCategories([...new Set([...categories, ...productCats])] as string[]);
     } catch (err) {
@@ -198,7 +203,6 @@ export default function AdminPage() {
     catch (err) { toast.error('Failed to update status'); }
   };
 
-  // Total Revenue — all orders
   const totalRevenue = orders.reduce((sum: number, o: any) => sum + o.total, 0);
   const lowStockProducts = products.filter((p: any) => p.stock <= 5);
   const warningProducts = products.filter((p: any) => p.stock > 5 && p.stock <= 10);
@@ -270,10 +274,16 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto">
-          {['dashboard', 'orders', 'products', 'customers', 'reports', 'homepage'].map((tab) => (
+          {['dashboard', 'orders', 'products', 'customers', 'reports', 'homepage', 'returns'].map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold capitalize transition ${activeTab === tab ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-500 hover:border-orange-500 hover:text-orange-500'}`}>
-              {tab === 'dashboard' && '📊 '}{tab === 'orders' && '📦 '}{tab === 'products' && '🏪 '}{tab === 'customers' && '👥 '}{tab === 'reports' && '📈 '}{tab === 'homepage' && '🏠 '}
+              {tab === 'dashboard' && '📊 '}
+              {tab === 'orders' && '📦 '}
+              {tab === 'products' && '🏪 '}
+              {tab === 'customers' && '👥 '}
+              {tab === 'reports' && '📈 '}
+              {tab === 'homepage' && '🏠 '}
+              {tab === 'returns' && '🔄 '}
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
@@ -604,7 +614,113 @@ export default function AdminPage() {
             </button>
           </div>
         )}
-      </div>
+
+        {/* Returns */}
+        {activeTab === 'returns' && (
+          <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold">🔄 Return Requests ({returns.length})</h2>
+            </div>
+            {returns.length === 0 ? (
+              <div className="text-center py-16 text-gray-400">
+                <div className="text-5xl mb-3">🔄</div>
+                <p>No return requests yet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {returns.map((ret: any) => (
+                  <div key={ret.id} className="border border-gray-100 rounded-xl p-4 hover:border-orange-200 transition">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="text-orange-500 font-black text-sm">{ret.order?.uniqueId || `#${ret.orderId}`}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${ret.status === 'approved' ? 'bg-green-100 text-green-700' : ret.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                            {ret.status === 'pending' ? '⏳ Pending' : ret.status === 'approved' ? '✅ Approved' : '❌ Rejected'}
+                          </span>
+                          <span className="text-gray-400 text-xs">{new Date(ret.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-7 h-7 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-black">{ret.user?.name?.[0]?.toUpperCase()}</div>
+                          <span className="text-sm font-medium text-gray-700">{ret.user?.name}</span>
+                          <span className="text-gray-400 text-xs">{ret.user?.phone || ret.user?.email}</span>
+                        </div>
+                        <p className="text-gray-500 text-sm"><span className="font-semibold text-gray-700">Reason:</span> {ret.reason}</p>
+                        {ret.adminNote && (
+                          <p className="text-gray-400 text-xs mt-1 bg-gray-50 rounded-lg px-3 py-1.5">
+                            <span className="text-orange-500 font-semibold">Your Note:</span> {ret.adminNote}
+                          </p>
+                        )}
+                        <div className="mt-3 flex gap-2 flex-wrap">
+                          {ret.order?.orderItems?.map((item: any) => (
+                            <div key={item.id} className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-2 py-1">
+                              {item.product?.imageUrl ? <img src={`http://localhost:5000${item.product.imageUrl}`} className="w-5 h-5 rounded object-cover" /> : <span className="text-xs">{item.product?.emoji}</span>}
+                              <span className="text-xs text-gray-600">{item.product?.name}</span>
+                              <span className="text-xs text-gray-400">×{item.quantity}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      {ret.status === 'pending' && (
+                        <button onClick={() => { setSelectedReturn(ret); setShowReturnModal(true); setReturnNote(''); }}
+                          className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-xl text-xs transition flex-shrink-0">
+                          Review
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+      </div>{/* ← closes max-w-7xl mx-auto */}
+
+      {/* Return Review Modal */}
+      {showReturnModal && selectedReturn && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowReturnModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <h2 className="text-xl font-black">🔄 Review Return Request</h2>
+              <button onClick={() => setShowReturnModal(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-sm font-bold text-gray-700 mb-1">Order: <span className="text-orange-500">{selectedReturn.order?.uniqueId}</span></p>
+                <p className="text-sm text-gray-600"><span className="font-semibold">Customer:</span> {selectedReturn.user?.name}</p>
+                <p className="text-sm text-gray-600 mt-2"><span className="font-semibold">Reason:</span> {selectedReturn.reason}</p>
+              </div>
+              <div>
+                <label className="text-gray-600 text-sm font-semibold mb-2 block">Admin Note (optional)</label>
+                <textarea placeholder="Add a note for the customer..." value={returnNote} onChange={(e) => setReturnNote(e.target.value)} rows={3}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 resize-none" />
+              </div>
+              <div className="flex gap-3">
+                <button onClick={async () => {
+                  try {
+                    await returnsAPI.updateStatus(selectedReturn.id, 'approved', returnNote);
+                    toast.success('Return request approved! ✅');
+                    setShowReturnModal(false);
+                    fetchData();
+                  } catch { toast.error('Failed to update'); }
+                }} className="flex-1 bg-green-500 hover:bg-green-400 text-white font-bold py-3 rounded-xl transition text-sm">
+                  ✅ Approve
+                </button>
+                <button onClick={async () => {
+                  try {
+                    await returnsAPI.updateStatus(selectedReturn.id, 'rejected', returnNote);
+                    toast.success('Return request rejected');
+                    setShowReturnModal(false);
+                    fetchData();
+                  } catch { toast.error('Failed to update'); }
+                }} className="flex-1 bg-red-500 hover:bg-red-400 text-white font-bold py-3 rounded-xl transition text-sm">
+                  ❌ Reject
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Order Detail Modal */}
       {showOrderModal && selectedOrder && (
@@ -621,9 +737,7 @@ export default function AdminPage() {
                 <button onClick={() => setShowOrderModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 text-xl transition">✕</button>
               </div>
             </div>
-
             <div className="p-6 space-y-5">
-              {/* Customer + Address */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-50 rounded-xl p-4">
                   <p className="text-gray-400 text-xs font-medium mb-2">👤 Customer</p>
@@ -646,8 +760,6 @@ export default function AdminPage() {
                   ) : <p className="text-gray-400 text-sm">No address provided</p>}
                 </div>
               </div>
-
-              {/* Order Items */}
               <div>
                 <p className="text-gray-700 font-bold mb-3">📦 Order Items ({selectedOrder.orderItems?.length})</p>
                 <div className="space-y-2">
@@ -670,8 +782,6 @@ export default function AdminPage() {
                   ))}
                 </div>
               </div>
-
-              {/* Total + Status Update */}
               <div className="bg-orange-50 rounded-xl p-4 flex items-center justify-between">
                 <div>
                   <p className="text-gray-500 text-sm">Total Amount</p>
