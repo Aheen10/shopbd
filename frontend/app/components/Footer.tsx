@@ -59,11 +59,13 @@ export default function Footer() {
             </ul>
           </div>
         </div>
+      </div>
 
-        {/* Bottom Bar */}
-        <div className="border-t border-gray-800 mt-10 pt-6 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-gray-500">
-          <p>© {new Date().getFullYear()} ShopBD. All rights reserved.</p>
-          <p>Made with ❤️ in Bangladesh</p>
+      {/* Bottom Bar */}
+      <div className="bg-orange-500">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+          <p className="text-white font-medium">© {new Date().getFullYear()} ShopBD. All rights reserved.</p>
+          <p className="text-white font-medium">Made with ❤️ in Bangladesh</p>
         </div>
       </div>
     </footer>
