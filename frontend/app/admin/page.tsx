@@ -455,7 +455,7 @@ export default function AdminPage() {
           <div className="space-y-6">
             <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-bold">📈 Monthly Sales Report</h2>
+                <h2 className="text-lg font-bold">📈 Yearly Sales Report</h2>
                 <div className="flex items-center gap-3">
                   <select value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-orange-500">
                     {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
