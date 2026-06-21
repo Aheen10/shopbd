@@ -20,18 +20,15 @@ const io = new Server(server, {
   }
 });
 
-// Make io accessible in routes
 app.set('io', io);
 
 io.on('connection', (socket) => {
   console.log('🔌 Client connected:', socket.id);
 
   socket.on('join', (data) => {
-    // Leave all rooms first
     socket.rooms.forEach(room => {
       if (room !== socket.id) socket.leave(room);
     });
-
     if (data.role === 'admin') {
       socket.join('admin');
       console.log(`👑 Admin joined room [admin] - socket: ${socket.id}`);
@@ -66,15 +63,37 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('dev'));
 
+// XSS Sanitization
+app.use((req, res, next) => {
+  if (req.body) {
+    const sanitize = (obj) => {
+      for (const key in obj) {
+        if (typeof obj[key] === 'string') {
+          obj[key] = obj[key].replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+        } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+          sanitize(obj[key]);
+        }
+      }
+    };
+    sanitize(req.body);
+  }
+  next();
+});
+
+// Static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// General Rate Limiter
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: { error: 'Too many requests, please try again later.' }
+  max: 200,
+  message: { error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use('/api/', limiter);
 
@@ -82,6 +101,7 @@ app.get('/', (req, res) => {
   res.json({ message: '🚀 ShopBD API is running!', status: 'OK' });
 });
 
+// Routes
 const authRoutes = require('./routes/authRoutes');
 app.use('/api/auth', authRoutes);
 const productRoutes = require('./routes/productRoutes');
@@ -100,6 +120,8 @@ const wishlistRoutes = require('./routes/wishlistRoutes');
 app.use('/api/wishlist', wishlistRoutes);
 const returnRoutes = require('./routes/returnRoutes');
 app.use('/api/returns', returnRoutes);
+const couponRoutes = require('./routes/couponRoutes');
+app.use('/api/coupons', couponRoutes);
 
 const { errorHandler, notFound } = require('./middleware/errorMiddleware');
 app.use(notFound);
