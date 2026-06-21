@@ -52,6 +52,8 @@ model Order {
   orderItems      OrderItem[]
   paymentStatus String @default("cod_pending")
   returnRequests ReturnRequest[]
+  couponCode      String?
+  discountAmount  Float   @default(0)
 }
 
 model OrderItem {
@@ -120,4 +122,26 @@ model ReturnRequest {
   adminNote String?  @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+model Coupon {
+  id              Int      @id @default(autoincrement())
+  code            String   @unique
+  type            String   // 'percentage' or 'fixed'
+  value           Float    // discount amount or percentage
+  minOrderAmount  Float    @default(0)
+  maxUses         Int?     // null = unlimited
+  usedCount       Int      @default(0)
+  expiresAt       DateTime?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  uses            CouponUse[]
+}
+
+model CouponUse {
+  id        Int      @id @default(autoincrement())
+  couponId  Int
+  coupon    Coupon   @relation(fields: [couponId], references: [id])
+  userId    Int
+  orderId   Int
+  createdAt DateTime @default(now())
 }
