@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStore } from '../lib/store';
-import { ordersAPI, paymentAPI, settingsAPI } from '../lib/api';
+import { ordersAPI, paymentAPI, settingsAPI, couponsAPI } from '../lib/api';
 import Navbar from '../components/Navbar';
 import toast, { Toaster } from 'react-hot-toast';
 import Footer from '../components/Footer';
@@ -87,9 +87,7 @@ const THANAS: { [key: string]: string[] } = {
   'Dinajpur': ['Dinajpur Sadar', 'Birampur', 'Birganj', 'Biral', 'Bochaganj', 'Chirirbandar', 'Fulbari', 'Ghoraghat', 'Hakimpur', 'Kaharole', 'Khansama', 'Nawabganj', 'Parbatipur'],
 };
 
-const getThanas = (district: string): string[] => {
-  return THANAS[district] || [];
-};
+const getThanas = (district: string): string[] => THANAS[district] || [];
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -105,6 +103,11 @@ export default function CheckoutPage() {
   const [paymentVerified, setPaymentVerified] = useState(false);
   const [transactionId, setTransactionId] = useState('');
 
+  // Coupon state
+  const [couponCode, setCouponCode] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+
   const [address, setAddress] = useState({
     name: user?.name || '',
     phone: '',
@@ -115,19 +118,13 @@ export default function CheckoutPage() {
   });
 
   const [deliveryCharges, setDeliveryCharges] = useState({ insideDhaka: 60, outsideDhaka: 120, freeAbove: 10000 });
-
   const [thanaSearch, setThanaSearch] = useState('');
   const [districtSearch, setDistrictSearch] = useState('');
   const [showDistrictDropdown, setShowDistrictDropdown] = useState(false);
   const [showThanaDropdown, setShowThanaDropdown] = useState(false);
 
-  const filteredDistricts = DISTRICTS.filter(d =>
-    d.toLowerCase().includes(districtSearch.toLowerCase())
-  );
-
-  const filteredThanas = getThanas(address.district).filter(t =>
-    t.toLowerCase().includes(thanaSearch.toLowerCase())
-  );
+  const filteredDistricts = DISTRICTS.filter(d => d.toLowerCase().includes(districtSearch.toLowerCase()));
+  const filteredThanas = getThanas(address.district).filter(t => t.toLowerCase().includes(thanaSearch.toLowerCase()));
 
   useEffect(() => {
     settingsAPI.get().then(res => {
@@ -145,7 +142,30 @@ export default function CheckoutPage() {
     return address.district === 'Dhaka' ? deliveryCharges.insideDhaka : deliveryCharges.outsideDhaka;
   };
 
-  const getFinalTotal = () => cartTotal() + getDeliveryCharge();
+  const getDiscount = () => appliedCoupon?.discount || 0;
+
+  const getFinalTotal = () => Math.max(0, cartTotal() + getDeliveryCharge() - getDiscount());
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) { toast.error('Enter a coupon code'); return; }
+    setCouponLoading(true);
+    try {
+      const res = await couponsAPI.validate(couponCode.trim(), cartTotal());
+      setAppliedCoupon(res.data.coupon);
+      toast.success(res.data.message);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Invalid coupon');
+      setAppliedCoupon(null);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    toast.success('Coupon removed');
+  };
 
   const handleAddressSubmit = async () => {
     if (!user) { toast.error('Please login first'); router.push('/login'); return; }
@@ -158,7 +178,6 @@ export default function CheckoutPage() {
     if (!address.fullAddress) { toast.error('Full address is required'); return; }
 
     localStorage.setItem('shopbd_address', JSON.stringify(address));
-
     setLoading(true);
     try {
       const items = cart.map(i => ({ productId: i.productId, quantity: i.quantity }));
@@ -192,9 +211,9 @@ export default function CheckoutPage() {
     setLoading(true);
     try {
       if (paymentMethod === 'bkash') {
-        await paymentAPI.bkash({ orderId, phone: paymentPhone, amount: cartTotal() });
+        await paymentAPI.bkash({ orderId, phone: paymentPhone, amount: getFinalTotal() });
       } else if (paymentMethod === 'nagad') {
-        await paymentAPI.nagad({ orderId, phone: paymentPhone, amount: cartTotal() });
+        await paymentAPI.nagad({ orderId, phone: paymentPhone, amount: getFinalTotal() });
       } else {
         await paymentAPI.cod(orderId);
       }
@@ -253,6 +272,7 @@ export default function CheckoutPage() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <h1 className="text-2xl font-black mb-6">📍 Delivery Address</h1>
 
+            {/* Order Summary */}
             <div className="bg-orange-50 rounded-xl p-4 mb-6">
               <p className="text-sm font-semibold text-gray-600 mb-2">Order Summary ({cart.length} items)</p>
               <div className="space-y-1 mb-2">
@@ -263,20 +283,55 @@ export default function CheckoutPage() {
                   </div>
                 ))}
               </div>
-              <div className="border-t border-orange-100 pt-2 space-y-1.5">
+
+              {/* Coupon Input */}
+              <div className="border-t border-orange-100 pt-3 mb-3">
+                {!appliedCoupon ? (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Coupon code..."
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
+                      className="flex-1 border border-orange-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500 bg-white"
+                    />
+                    <button onClick={handleApplyCoupon} disabled={couponLoading}
+                      className="bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 text-white font-bold px-4 py-2 rounded-xl text-sm transition">
+                      {couponLoading ? '...' : 'Apply'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                    <div>
+                      <span className="text-green-600 font-bold text-sm">🎉 {appliedCoupon.code}</span>
+                      <span className="text-green-500 text-xs ml-2">
+                        {appliedCoupon.type === 'percentage' ? `${appliedCoupon.value}% off` : `৳${appliedCoupon.value} off`}
+                      </span>
+                    </div>
+                    <button onClick={handleRemoveCoupon} className="text-red-400 hover:text-red-600 text-xs font-bold">✕ Remove</button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
                 <div className="flex justify-between text-sm">
                   <span>Subtotal</span>
                   <span className="font-semibold">৳{cartTotal().toLocaleString()}</span>
                 </div>
+                {appliedCoupon && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Discount ({appliedCoupon.code})</span>
+                    <span className="font-semibold">-৳{getDiscount().toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span>Delivery Charge {address.district && `(${address.district === 'Dhaka' ? 'Inside Dhaka' : 'Outside Dhaka'})`}</span>
-                  <span className="font-semibold">
+                  <span className={getDeliveryCharge() === 0 ? 'text-green-500 font-bold' : 'font-semibold'}>
                     {getDeliveryCharge() === 0 ? 'FREE' : `৳${getDeliveryCharge().toLocaleString()}`}
                   </span>
                 </div>
-                {!address.district && (
-                  <div className="text-xs text-gray-400 italic">📍 Select district to calculate delivery charge</div>
-                )}
+                {!address.district && <p className="text-xs text-gray-400 italic">📍 Select district to calculate delivery charge</p>}
                 <div className="border-t border-orange-100 pt-1.5 flex justify-between font-black">
                   <span>Total</span>
                   <span className="text-orange-500">৳{getFinalTotal().toLocaleString()}</span>
@@ -302,19 +357,12 @@ export default function CheckoutPage() {
               {/* District */}
               <div className="relative">
                 <label className="text-gray-600 text-sm font-semibold mb-1 block">District * <span className="text-gray-400 font-normal">(64 districts)</span></label>
-                <input
-                  type="text"
-                  placeholder="Type to search district..."
+                <input type="text" placeholder="Type to search district..."
                   value={address.district ? address.district : districtSearch}
-                  onChange={(e) => {
-                    setDistrictSearch(e.target.value);
-                    setAddress({ ...address, district: '', thana: '' });
-                    setThanaSearch('');
-                    setShowDistrictDropdown(true);
-                  }}
+                  onChange={(e) => { setDistrictSearch(e.target.value); setAddress({ ...address, district: '', thana: '' }); setThanaSearch(''); setShowDistrictDropdown(true); }}
                   onFocus={() => { if (!address.district) setShowDistrictDropdown(true); }}
                   onBlur={() => setTimeout(() => setShowDistrictDropdown(false), 200)}
-                  className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-100 ${address.district ? 'border-green-400 bg-green-50 focus:border-green-400' : 'border-gray-200 focus:border-orange-500'}`}
+                  className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-100 ${address.district ? 'border-green-400 bg-green-50' : 'border-gray-200 focus:border-orange-500'}`}
                 />
                 {address.district && (
                   <button onClick={() => { setAddress({ ...address, district: '', thana: '' }); setDistrictSearch(''); setThanaSearch(''); }}
@@ -324,9 +372,7 @@ export default function CheckoutPage() {
                   <div className="absolute z-30 w-full bg-white border border-gray-200 rounded-xl mt-1 shadow-xl max-h-52 overflow-y-auto">
                     {filteredDistricts.map(d => (
                       <button key={d} onMouseDown={() => { setAddress({ ...address, district: d, thana: '' }); setDistrictSearch(''); setThanaSearch(''); setShowDistrictDropdown(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-orange-50 hover:text-orange-500 transition border-b border-gray-50 last:border-0">
-                        {d}
-                      </button>
+                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-orange-50 hover:text-orange-500 transition border-b border-gray-50 last:border-0">{d}</button>
                     ))}
                   </div>
                 )}
@@ -339,16 +385,10 @@ export default function CheckoutPage() {
                   {!address.district && <span className="text-gray-400 font-normal ml-1">(Select district first)</span>}
                   {address.district && <span className="text-gray-400 font-normal ml-1">({getThanas(address.district).length} options)</span>}
                 </label>
-                <input
-                  type="text"
-                  placeholder={address.district ? `Search in ${address.district}...` : 'Select district first'}
+                <input type="text" placeholder={address.district ? `Search in ${address.district}...` : 'Select district first'}
                   value={address.thana ? address.thana : thanaSearch}
                   disabled={!address.district}
-                  onChange={(e) => {
-                    setThanaSearch(e.target.value);
-                    setAddress({ ...address, thana: '' });
-                    setShowThanaDropdown(true);
-                  }}
+                  onChange={(e) => { setThanaSearch(e.target.value); setAddress({ ...address, thana: '' }); setShowThanaDropdown(true); }}
                   onFocus={() => { if (address.district && !address.thana) setShowThanaDropdown(true); }}
                   onBlur={() => setTimeout(() => setShowThanaDropdown(false), 200)}
                   className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-100 ${address.thana ? 'border-green-400 bg-green-50' : 'border-gray-200 focus:border-orange-500'} disabled:bg-gray-50 disabled:text-gray-400`}
@@ -361,9 +401,7 @@ export default function CheckoutPage() {
                   <div className="absolute z-30 w-full bg-white border border-gray-200 rounded-xl mt-1 shadow-xl max-h-52 overflow-y-auto">
                     {filteredThanas.map(t => (
                       <button key={t} onMouseDown={() => { setAddress({ ...address, thana: t }); setThanaSearch(''); setShowThanaDropdown(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-orange-50 hover:text-orange-500 transition border-b border-gray-50 last:border-0">
-                        {t}
-                      </button>
+                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-orange-50 hover:text-orange-500 transition border-b border-gray-50 last:border-0">{t}</button>
                     ))}
                   </div>
                 )}
@@ -394,6 +432,9 @@ export default function CheckoutPage() {
         {/* Payment */}
         {step === 'payment' && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <button onClick={() => setStep('address')} className="text-gray-400 hover:text-orange-500 transition mb-4 flex items-center gap-2 text-sm">
+              ← Back to Address
+            </button>
             <h1 className="text-2xl font-black mb-2">💳 Payment</h1>
             <p className="text-gray-400 text-sm mb-6">{uniqueOrderId || `Order #${orderId}`} — ৳{getFinalTotal().toLocaleString()}</p>
 
@@ -401,6 +442,11 @@ export default function CheckoutPage() {
               <p className="font-bold text-gray-700 mb-1">📍 Delivery to:</p>
               <p className="text-gray-600">{address.name} · {address.phone}</p>
               <p className="text-gray-500">{address.fullAddress}{address.area ? `, ${address.area}` : ''}, {address.thana}, {address.district}</p>
+              {appliedCoupon && (
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <p className="text-green-600 text-xs font-semibold">🎉 Coupon {appliedCoupon.code} applied — ৳{getDiscount().toLocaleString()} off</p>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-3 gap-3 mb-6">
