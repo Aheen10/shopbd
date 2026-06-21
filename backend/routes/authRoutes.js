@@ -3,9 +3,24 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 const nodemailer = require('nodemailer');
+const rateLimit = require('express-rate-limit');
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+// Rate Limiters
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many login attempts. Please try again after 15 minutes.' },
+  skipSuccessfulRequests: true,
+});
+
+const otpLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 3,
+  message: { error: 'Too many OTP requests. Please try again after 10 minutes.' },
+});
 
 // Email transporter
 const transporter = nodemailer.createTransport({
@@ -59,7 +74,7 @@ router.post('/register', async (req, res) => {
 });
 
 // LOGIN
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { emailOrPhone, password } = req.body;
     if (!emailOrPhone || !password) return res.status(400).json({ error: 'Email/Phone and password are required' });
@@ -128,7 +143,7 @@ router.put('/profile', async (req, res) => {
 // ─── FORGOT PASSWORD ───────────────────────────────────────────
 
 // SEND OTP — Email
-router.post('/forgot-password/email', async (req, res) => {
+router.post('/forgot-password/email', otpLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email is required' });
@@ -137,17 +152,13 @@ router.post('/forgot-password/email', async (req, res) => {
     if (!user) return res.status(404).json({ error: 'No account found with this email' });
 
     const code = generateOTP();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    // Delete old OTPs for this email
     await prisma.oTP.deleteMany({ where: { target: email, type: 'email' } });
-
-    // Save new OTP
     await prisma.oTP.create({
       data: { target: email, code, type: 'email', expiresAt }
     });
 
-    // Send email
     await transporter.sendMail({
       from: `"ShopBD" <${process.env.EMAIL_USER}>`,
       to: email,
@@ -173,7 +184,7 @@ router.post('/forgot-password/email', async (req, res) => {
 });
 
 // SEND OTP — Phone (SMS placeholder)
-router.post('/forgot-password/phone', async (req, res) => {
+router.post('/forgot-password/phone', otpLimiter, async (req, res) => {
   try {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ error: 'Phone number is required' });
@@ -182,32 +193,19 @@ router.post('/forgot-password/phone', async (req, res) => {
     if (!user) return res.status(404).json({ error: 'No account found with this phone number' });
 
     const code = generateOTP();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    // Delete old OTPs for this phone
     await prisma.oTP.deleteMany({ where: { target: phone, type: 'phone' } });
-
-    // Save new OTP
     await prisma.oTP.create({
       data: { target: phone, code, type: 'phone', expiresAt }
     });
 
     // TODO: Replace with real SMS gateway (SSL Wireless / BD SMS)
-    // Example SSL Wireless:
-    // await axios.post('https://sms.sslwireless.com/pushapi/dynamic/server.php', {
-    //   user: process.env.SSL_USER,
-    //   pass: process.env.SSL_PASS,
-    //   smsid: Date.now(),
-    //   msisdn: phone,
-    //   sms: `Your ShopBD OTP is: ${code}. Valid for 10 minutes.`,
-    //   sid: process.env.SSL_SID,
-    // });
+    // await axios.post('https://sms.sslwireless.com/...', { ... });
 
-    // For now — return OTP in response (REMOVE IN PRODUCTION)
     console.log(`📱 SMS OTP for ${phone}: ${code}`);
     res.json({
       message: 'OTP generated (SMS not configured yet)',
-      // TODO: Remove this in production after SMS gateway setup
       debug_otp: process.env.NODE_ENV === 'development' ? code : undefined
     });
   } catch (err) {
@@ -227,7 +225,6 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
 
-    // Find valid OTP
     const otp = await prisma.oTP.findFirst({
       where: {
         target,
@@ -239,10 +236,8 @@ router.post('/reset-password', async (req, res) => {
 
     if (!otp) return res.status(400).json({ error: 'Invalid or expired OTP' });
 
-    // Mark OTP as used
     await prisma.oTP.update({ where: { id: otp.id }, data: { used: true } });
 
-    // Find user and update password
     const isPhone = /^(\+8801|8801|01)[3-9]\d{8}$/.test(target);
     const user = isPhone
       ? await prisma.user.findUnique({ where: { phone: target } })
