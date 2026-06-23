@@ -51,6 +51,10 @@ export const productsAPI = {
         : { 'Content-Type': 'application/json' },
     }),
   delete: (id: number) => api.delete(`/api/products/${id}`),
+  getVariants: (id: number) => api.get(`/api/products/${id}/variants`),
+  addVariant: (id: number, data: any) => api.post(`/api/products/${id}/variants`, data),
+  updateVariant: (id: number, variantId: number, data: any) => api.put(`/api/products/${id}/variants/${variantId}`, data),
+  deleteVariant: (id: number, variantId: number) => api.delete(`/api/products/${id}/variants/${variantId}`),
 };
 
 // Cart API
@@ -108,6 +112,15 @@ export const returnsAPI = {
   allReturns: () => api.get('/api/returns/admin/all'),
   updateStatus: (id: number, status: string, adminNote?: string) =>
     api.put(`/api/returns/${id}/status`, { status, adminNote }),
+};
+// Coupons API
+export const couponsAPI = {
+  validate: (code: string, orderTotal: number) =>
+    api.post('/api/coupons/validate', { code, orderTotal }),
+  adminGetAll: () => api.get('/api/coupons/admin/all'),
+  adminCreate: (data: any) => api.post('/api/coupons/admin', data),
+  adminUpdate: (id: number, data: any) => api.put(`/api/coupons/admin/${id}`, data),
+  adminDelete: (id: number) => api.delete(`/api/coupons/admin/${id}`),
 };
 
 //Reviews API
