@@ -37,6 +37,7 @@ model Product {
   orderItems     OrderItem[]
   reviews        Review[]
   wishlistedBy Wishlist[]
+  variants    ProductVariant[]
 }
 
 model Order {
@@ -64,6 +65,9 @@ model OrderItem {
   product   Product @relation(fields: [productId], references: [id])
   quantity  Int
   price     Float
+  variantId   Int?
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
+
 }
 
 model Review {
@@ -75,6 +79,19 @@ model Review {
   rating    Int
   comment   String?  @db.Text
   createdAt DateTime @default(now())
+}
+
+model ProductVariant {
+  id         Int         @id @default(autoincrement())
+  productId  Int
+  product    Product     @relation(fields: [productId], references: [id])
+  name       String      // e.g. "Size", "Color", "Weight"
+  value      String      // e.g. "XL", "Red", "1kg"
+  price      Float?      // optional price override
+  stock      Int         @default(0)
+  sku        String?     // optional stock keeping unit
+  createdAt  DateTime    @default(now())
+  orderItems OrderItem[]
 }
 
 model Wishlist {
