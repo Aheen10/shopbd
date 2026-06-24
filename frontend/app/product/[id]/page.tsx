@@ -19,8 +19,11 @@ export default function ProductDetailPage() {
   const [cartOpen, setCartOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'description' | 'specifications' | 'shipping'>('description');
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [siteSettings, setSiteSettings] = useState<any>(null);
 
-  // Reviews
+  const [variants, setVariants] = useState<any[]>([]);
+  const [selectedVariant, setSelectedVariant] = useState<any>(null);
+
   const [reviews, setReviews] = useState<any[]>([]);
   const [avgRating, setAvgRating] = useState(0);
   const [totalReviews, setTotalReviews] = useState(0);
@@ -28,7 +31,6 @@ export default function ProductDetailPage() {
   const [myComment, setMyComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
   const [hoverRating, setHoverRating] = useState(0);
-  const [siteSettings, setSiteSettings] = useState(null);
 
   useEffect(() => { fetchProduct(); }, []);
 
@@ -41,12 +43,20 @@ export default function ProductDetailPage() {
       const settingsRes = await settingsAPI.get();
       setSiteSettings(settingsRes.data);
       fetchReviews(res.data.id);
+      fetchVariants(res.data.id);
     } catch (err) {
       toast.error('Product not found');
       router.push('/');
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchVariants = async (productId: number) => {
+    try {
+      const res = await productsAPI.getVariants(productId);
+      setVariants(res.data);
+    } catch {}
   };
 
   const fetchReviews = async (productId: number) => {
@@ -58,9 +68,38 @@ export default function ProductDetailPage() {
     } catch {}
   };
 
+  const getCurrentPrice = () => {
+    if (selectedVariant?.price) return selectedVariant.price;
+    return product?.price || 0;
+  };
+
+  const getCurrentStock = () => {
+    if (selectedVariant) return selectedVariant.stock;
+    return product?.stock || 0;
+  };
+
   const handleAddToCart = () => {
-    addToCart({ productId: product.id, name: product.name, price: product.price, emoji: product.emoji, quantity });
+    if (variants.length > 0 && !selectedVariant) {
+      toast.error('Please select a variant first');
+      return;
+    }
+    const variantName = selectedVariant ? ` (${selectedVariant.name}: ${selectedVariant.value})` : '';
+    addToCart({
+      productId: product.id,
+      name: product.name + variantName,
+      price: getCurrentPrice(),
+      emoji: product.emoji,
+      quantity,
+    });
     toast.success(`🛒 ${product.name} added to cart!`);
+  };
+
+  const handleDeleteReview = async (reviewId: number) => {
+    try {
+      await reviewsAPI.delete(reviewId);
+      toast.success('Review deleted');
+      fetchReviews(product.id);
+    } catch { toast.error('Failed to delete review'); }
   };
 
   const handleSubmitReview = async () => {
@@ -80,14 +119,6 @@ export default function ProductDetailPage() {
     }
   };
 
-  const handleDeleteReview = async (reviewId: number) => {
-    try {
-      await reviewsAPI.delete(reviewId);
-      toast.success('Review deleted');
-      fetchReviews(product.id);
-    } catch { toast.error('Failed to delete review'); }
-  };
-
   const discount = product?.oldPrice ? Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100) : null;
 
   const allImages: string[] = [];
@@ -100,16 +131,6 @@ export default function ProductDetailPage() {
         return { key: key?.trim(), value: rest.join(':').trim() || key?.trim() };
       })
     : [];
-
-  const StarRating = ({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'lg' }) => (
-    <div className="flex gap-0.5">
-      {[1, 2, 3, 4, 5].map(s => (
-        <span key={s} className={size === 'lg' ? 'text-xl' : 'text-sm'}>
-          {s <= rating ? '⭐' : '☆'}
-        </span>
-      ))}
-    </div>
-  );
 
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -124,6 +145,7 @@ export default function ProductDetailPage() {
       <Navbar onCartClick={() => setCartOpen(true)} />
 
       <div className="flex-1 max-w-6xl mx-auto px-4 py-8 w-full">
+
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-xs text-gray-400 mb-6">
           <button onClick={() => router.push('/')} className="hover:text-orange-500 transition">Home</button>
@@ -135,6 +157,7 @@ export default function ProductDetailPage() {
 
         {/* Main Product Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10">
+
           {/* Images */}
           <div className="space-y-3">
             <div className="bg-gray-50 border border-gray-100 rounded-2xl overflow-hidden h-96 flex items-center justify-center relative">
@@ -164,9 +187,7 @@ export default function ProductDetailPage() {
             {totalReviews > 0 && (
               <div className="flex items-center gap-3">
                 <div className="flex gap-0.5">
-                  {[1,2,3,4,5].map(s => (
-                    <span key={s} className="text-lg">{s <= Math.round(avgRating) ? '⭐' : '☆'}</span>
-                  ))}
+                  {[1,2,3,4,5].map(s => <span key={s} className="text-lg">{s <= Math.round(avgRating) ? '⭐' : '☆'}</span>)}
                 </div>
                 <span className="font-bold text-gray-800">{avgRating}</span>
                 <span className="text-gray-400 text-sm">({totalReviews} reviews)</span>
@@ -175,8 +196,8 @@ export default function ProductDetailPage() {
 
             {/* Price */}
             <div className="flex items-center gap-3">
-              <span className="text-3xl font-black text-orange-500">৳{product.price.toLocaleString()}</span>
-              {product.oldPrice && (
+              <span className="text-3xl font-black text-orange-500">৳{getCurrentPrice().toLocaleString()}</span>
+              {product.oldPrice && !selectedVariant?.price && (
                 <>
                   <span className="text-gray-400 text-lg line-through">৳{product.oldPrice.toLocaleString()}</span>
                   <span className="bg-red-50 text-red-500 text-sm font-bold px-2.5 py-1 rounded-full">Save ৳{(product.oldPrice - product.price).toLocaleString()}</span>
@@ -186,14 +207,64 @@ export default function ProductDetailPage() {
 
             {/* Stock */}
             <div>
-              {product.stock === 0
+              {getCurrentStock() === 0
                 ? <span className="bg-red-100 text-red-500 text-xs font-bold px-3 py-1.5 rounded-full">❌ Out of Stock</span>
-                : product.stock <= 5
-                ? <span className="bg-orange-100 text-orange-600 text-xs font-bold px-3 py-1.5 rounded-full">⚡ Only {product.stock} left!</span>
+                : getCurrentStock() <= 5
+                ? <span className="bg-orange-100 text-orange-600 text-xs font-bold px-3 py-1.5 rounded-full">⚡ Only {getCurrentStock()} left!</span>
                 : <span className="bg-green-100 text-green-600 text-xs font-bold px-3 py-1.5 rounded-full">✅ In Stock</span>}
             </div>
 
-            {product.description && <p className="text-gray-500 text-sm leading-relaxed border-t border-gray-100 pt-4">{product.description}</p>}
+            {product.description && (
+              <p className="text-gray-500 text-sm leading-relaxed border-t border-gray-100 pt-4">{product.description}</p>
+            )}
+
+            {/* Variants - flat, 3 per row */}
+            {variants.length > 0 && (
+              <div className="border-t border-gray-100 pt-4 space-y-4">
+                <div>
+                  <p className="text-sm font-semibold text-gray-700 mb-2">
+                    Variant:
+                    {selectedVariant && (
+                      <span className="text-orange-500 ml-2 font-bold">{selectedVariant.name} - {selectedVariant.value}</span>
+                    )}
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {variants.map((v: any) => (
+                      <button
+                        key={v.id}
+                        onClick={() => {
+                          if (selectedVariant?.id === v.id) {
+                            setSelectedVariant(null);
+                          } else {
+                            setSelectedVariant(v);
+                            setQuantity(1);
+                          }
+                        }}
+                        disabled={v.stock === 0}
+                        className={`px-3 py-2.5 rounded-xl border-2 text-sm font-semibold transition relative text-center ${
+                          selectedVariant?.id === v.id
+                            ? 'border-orange-500 bg-orange-50 text-orange-600'
+                            : v.stock === 0
+                            ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                            : 'border-gray-200 hover:border-orange-400 text-gray-700 hover:bg-orange-50'
+                        }`}
+                      >
+                        <span className="block font-bold">{v.value}</span>
+                        {v.price && v.price !== product.price && (
+                          <span className="block text-xs text-orange-400 font-normal mt-0.5">৳{v.price.toLocaleString()}</span>
+                        )}
+                        {v.stock === 0 && (
+                          <span className="block text-xs text-red-400 font-normal mt-0.5">Out of stock</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {!selectedVariant && (
+                  <p className="text-orange-500 text-xs font-semibold">⚠️ Please select a variant</p>
+                )}
+              </div>
+            )}
 
             {/* Quantity */}
             <div className="flex items-center gap-4 pt-2">
@@ -202,18 +273,18 @@ export default function ProductDetailPage() {
                 <button onClick={() => setQuantity(Math.max(1, quantity - 1))}
                   className="px-4 py-2.5 text-gray-500 hover:bg-orange-50 hover:text-orange-500 font-bold text-lg transition">−</button>
                 <span className="px-4 py-2.5 font-black text-gray-800 min-w-12 text-center border-x-2 border-gray-200">{quantity}</span>
-                <button onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                <button onClick={() => setQuantity(Math.min(getCurrentStock(), quantity + 1))}
                   className="px-4 py-2.5 text-gray-500 hover:bg-orange-50 hover:text-orange-500 font-bold text-lg transition">+</button>
               </div>
             </div>
 
             {/* Buttons */}
             <div className="flex gap-3 pt-2">
-              <button onClick={handleAddToCart} disabled={product.stock === 0}
+              <button onClick={handleAddToCart} disabled={getCurrentStock() === 0}
                 className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-3.5 rounded-xl transition text-sm">
                 🛒 Add to Cart
               </button>
-              <button onClick={() => { handleAddToCart(); router.push('/checkout'); }} disabled={product.stock === 0}
+              <button onClick={() => { handleAddToCart(); router.push('/checkout'); }} disabled={getCurrentStock() === 0}
                 className="flex-1 bg-gray-900 hover:bg-gray-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-3.5 rounded-xl transition text-sm">
                 ⚡ Buy Now
               </button>
@@ -312,13 +383,10 @@ export default function ProductDetailPage() {
               <div className="text-center py-4">
                 <p className="text-gray-500 text-sm mb-3">Please log in to leave a review</p>
                 <button onClick={() => router.push('/login')}
-                  className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition">
-                  Log in
-                </button>
+                  className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition">Log in</button>
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Star Selector */}
                 <div>
                   <p className="text-gray-600 text-sm font-semibold mb-2">Your Rating *</p>
                   <div className="flex gap-1">
@@ -338,19 +406,12 @@ export default function ProductDetailPage() {
                     )}
                   </div>
                 </div>
-
-                {/* Comment */}
                 <div>
                   <p className="text-gray-600 text-sm font-semibold mb-2">Your Comment (optional)</p>
-                  <textarea
-                    placeholder="Share your experience with this product..."
-                    value={myComment}
-                    onChange={(e) => setMyComment(e.target.value)}
-                    rows={3}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 bg-white resize-none"
-                  />
+                  <textarea placeholder="Share your experience..." value={myComment}
+                    onChange={(e) => setMyComment(e.target.value)} rows={3}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 bg-white resize-none" />
                 </div>
-
                 <button onClick={handleSubmitReview} disabled={submittingReview || myRating === 0}
                   className="bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold px-8 py-3 rounded-xl text-sm transition">
                   {submittingReview ? 'Submitting...' : '⭐ Submit Review'}
@@ -430,6 +491,7 @@ export default function ProductDetailPage() {
             </div>
           </div>
         )}
+
       </div>
       <Footer />
     </div>
