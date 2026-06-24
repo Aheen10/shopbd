@@ -155,4 +155,69 @@ router.delete('/:id', authMiddleware, adminMiddleware, async (req, res) => {
   }
 });
 
+// GET VARIANTS for a product
+router.get('/:id/variants', async (req, res) => {
+  try {
+    const variants = await prisma.productVariant.findMany({
+      where: { productId: parseInt(req.params.id) },
+      orderBy: { createdAt: 'asc' }
+    });
+    res.json(variants);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ADD VARIANT (admin)
+router.post('/:id/variants', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { name, value, price, stock, sku } = req.body;
+    if (!name || !value) return res.status(400).json({ error: 'Name and value are required' });
+
+    const variant = await prisma.productVariant.create({
+      data: {
+        productId: parseInt(req.params.id),
+        name,
+        value,
+        price: price ? parseFloat(price) : null,
+        stock: parseInt(stock) || 0,
+        sku: sku || null,
+      }
+    });
+    res.status(201).json({ message: 'Variant added', variant });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// UPDATE VARIANT (admin)
+router.put('/:id/variants/:variantId', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { name, value, price, stock, sku } = req.body;
+    const variant = await prisma.productVariant.update({
+      where: { id: parseInt(req.params.variantId) },
+      data: {
+        name: name || undefined,
+        value: value || undefined,
+        price: price !== undefined ? (price ? parseFloat(price) : null) : undefined,
+        stock: stock !== undefined ? parseInt(stock) : undefined,
+        sku: sku !== undefined ? (sku || null) : undefined,
+      }
+    });
+    res.json({ message: 'Variant updated', variant });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE VARIANT (admin)
+router.delete('/:id/variants/:variantId', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    await prisma.productVariant.delete({ where: { id: parseInt(req.params.variantId) } });
+    res.json({ message: 'Variant deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
