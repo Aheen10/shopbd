@@ -6,7 +6,7 @@ import { useStore } from '../lib/store';
 import Navbar from '../components/Navbar';
 import toast, { Toaster } from 'react-hot-toast';
 import jsPDF from 'jspdf';
-import { ordersAPI, productsAPI, settingsAPI, returnsAPI } from '../lib/api';
+import { ordersAPI, productsAPI, settingsAPI, returnsAPI, couponsAPI } from '../lib/api';
 
 const EMPTY_PRODUCT = {
   name: '', description: '', price: '', oldPrice: '',
@@ -62,6 +62,12 @@ export default function AdminPage() {
   const [outsideDhakaCharge, setOutsideDhakaCharge] = useState(120);
   const [freeDeliveryAbove, setFreeDeliveryAbove] = useState(10000);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [coupons, setCoupons] = useState<any[]>([]);
+  const [showCouponModal, setShowCouponModal] = useState(false);
+  const [couponForm, setCouponForm] = useState({code: '', type: 'percentage', value: '', minOrderAmount: '', maxUses: '', expiresAt: '', isActive: true});
+  const [savingCoupon, setSavingCoupon] = useState(false);
+  const [newVariant, setNewVariant] = useState({ name: '', value: '', price: '', stock: '0', sku: '' });
+  const [editingProductVariants, setEditingProductVariants] = useState<any[]>([]);
   const [bannerImageFiles, setBannerImageFiles] = useState<{ [key: number]: File }>({});
   const bannerFileRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
   const fileRef = useRef<HTMLInputElement>(null);
@@ -89,6 +95,8 @@ export default function AdminPage() {
       setReturns(returnsRes.data);
       const productCats = [...new Set(productsRes.data.products.map((p: any) => p.category))];
       setCategories([...new Set([...categories, ...productCats])] as string[]);
+      const couponRes = await couponsAPI.adminGetAll();
+      setCoupons(couponRes.data);
     } catch (err) {
       toast.error('Failed to load data');
     } finally {
@@ -171,11 +179,21 @@ export default function AdminPage() {
     toast.success('Sales report downloaded! 📊');
   };
 
-  const openAddModal = () => { setEditingProduct(null); setProductForm(EMPTY_PRODUCT); setImageFiles([]); setShowProductModal(true); };
+  const openAddModal = () => {
+    setEditingProduct(null);
+    setProductForm(EMPTY_PRODUCT);
+    setImageFiles([]);
+    setEditingProductVariants([]);
+    setShowProductModal(false);
+    setTimeout(() => setShowProductModal(true), 0);
+  };
   const openEditModal = (p: any) => {
     setEditingProduct(p);
     setProductForm({ name: p.name, description: p.description || '', price: p.price, oldPrice: p.oldPrice || '', category: p.category, emoji: p.emoji, stock: p.stock, specifications: p.specifications || '' });
-    setImageFiles([]); setShowProductModal(true);
+    setImageFiles([]);
+    setShowProductModal(true);
+    // Fetch variants
+    productsAPI.getVariants(p.id).then(res => setEditingProductVariants(res.data)).catch(() => {});
   };
 
   const handleSaveProduct = async () => {
@@ -274,7 +292,7 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto">
-          {['dashboard', 'orders', 'products', 'customers', 'reports', 'homepage', 'returns'].map((tab) => (
+          {['dashboard', 'orders', 'products', 'customers', 'reports', 'homepage', 'returns','coupons'].map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold capitalize transition ${activeTab === tab ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-500 hover:border-orange-500 hover:text-orange-500'}`}>
               {tab === 'dashboard' && '📊 '}
@@ -284,6 +302,7 @@ export default function AdminPage() {
               {tab === 'reports' && '📈 '}
               {tab === 'homepage' && '🏠 '}
               {tab === 'returns' && '🔄 '}
+              {tab === 'coupons' && '🎟️ '}
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
@@ -676,6 +695,88 @@ export default function AdminPage() {
 
       </div>{/* ← closes max-w-7xl mx-auto */}
 
+      {/* Coupons */}
+      {activeTab === 'coupons' && (
+        <div className="space-y-4">
+          <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold">🎟️ Coupon Management ({coupons.length})</h2>
+              <button onClick={() => setShowCouponModal(true)}
+                className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-xl text-sm transition">
+                ➕ Create Coupon
+              </button>
+            </div>
+
+            {coupons.length === 0 ? (
+              <div className="text-center py-16 text-gray-400">
+                <div className="text-5xl mb-3">🎟️</div>
+                <p>No coupons yet</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-gray-400 border-b border-gray-100">
+                      <th className="text-left pb-3">Code</th>
+                      <th className="text-left pb-3">Type</th>
+                      <th className="text-left pb-3">Value</th>
+                      <th className="text-left pb-3">Min Order</th>
+                      <th className="text-left pb-3">Uses</th>
+                      <th className="text-left pb-3">Expires</th>
+                      <th className="text-left pb-3">Status</th>
+                      <th className="text-left pb-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {coupons.map((coupon: any) => (
+                      <tr key={coupon.id} className="border-b border-gray-50 hover:bg-gray-50">
+                        <td className="py-3 font-black text-orange-500">{coupon.code}</td>
+                        <td className="py-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${coupon.type === 'percentage' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                            {coupon.type === 'percentage' ? '% Off' : '৳ Off'}
+                          </span>
+                        </td>
+                        <td className="py-3 font-bold">
+                          {coupon.type === 'percentage' ? `${coupon.value}%` : `৳${coupon.value}`}
+                        </td>
+                        <td className="py-3 text-gray-500">৳{coupon.minOrderAmount}</td>
+                        <td className="py-3 text-gray-500">
+                          {coupon.usedCount}{coupon.maxUses ? `/${coupon.maxUses}` : ''}
+                        </td>
+                        <td className="py-3 text-gray-500">
+                          {coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString() : 'No expiry'}
+                        </td>
+                        <td className="py-3">
+                          <button onClick={async () => {
+                            await couponsAPI.adminUpdate(coupon.id, { isActive: !coupon.isActive });
+                            fetchData();
+                            toast.success(`Coupon ${coupon.isActive ? 'deactivated' : 'activated'}!`);
+                          }}
+                            className={`px-2 py-1 rounded-full text-xs font-bold ${coupon.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {coupon.isActive ? '✅ Active' : '⏸ Inactive'}
+                          </button>
+                        </td>
+                        <td className="py-3">
+                          <button onClick={async () => {
+                            if (!confirm('Delete this coupon?')) return;
+                            await couponsAPI.adminDelete(coupon.id);
+                            toast.success('Coupon deleted');
+                            fetchData();
+                          }}
+                            className="bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold px-3 py-1.5 rounded-lg transition">
+                            🗑️ Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Return Review Modal */}
       {showReturnModal && selectedReturn && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowReturnModal(false)}>
@@ -715,6 +816,103 @@ export default function AdminPage() {
                   } catch { toast.error('Failed to update'); }
                 }} className="flex-1 bg-red-500 hover:bg-red-400 text-white font-bold py-3 rounded-xl transition text-sm">
                   ❌ Reject
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Coupon Modal */}
+      {showCouponModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowCouponModal(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-black">🎟️ Create Coupon</h2>
+              <button onClick={() => setShowCouponModal(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-gray-600 text-sm font-semibold mb-1 block">Coupon Code *</label>
+                <input type="text" placeholder="e.g. SAVE20" value={couponForm.code}
+                  onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 font-bold tracking-wider" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-gray-600 text-sm font-semibold mb-1 block">Type *</label>
+                  <select value={couponForm.type} onChange={(e) => setCouponForm({ ...couponForm, type: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500">
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="fixed">Fixed Amount (৳)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-gray-600 text-sm font-semibold mb-1 block">
+                    Value * {couponForm.type === 'percentage' ? '(%)' : '(৳)'}
+                  </label>
+                  <input type="number" placeholder={couponForm.type === 'percentage' ? '10' : '100'}
+                    value={couponForm.value}
+                    onChange={(e) => setCouponForm({ ...couponForm, value: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-gray-600 text-sm font-semibold mb-1 block">Min Order (৳)</label>
+                  <input type="number" placeholder="0" value={couponForm.minOrderAmount}
+                    onChange={(e) => setCouponForm({ ...couponForm, minOrderAmount: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
+                </div>
+                <div>
+                  <label className="text-gray-600 text-sm font-semibold mb-1 block">Max Uses</label>
+                  <input type="number" placeholder="Unlimited" value={couponForm.maxUses}
+                    onChange={(e) => setCouponForm({ ...couponForm, maxUses: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-600 text-sm font-semibold mb-1 block">Expiry Date <span className="text-gray-400 font-normal">(optional)</span></label>
+                <input type="datetime-local" value={couponForm.expiresAt}
+                  onChange={(e) => setCouponForm({ ...couponForm, expiresAt: e.target.value })}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
+              </div>
+              <div className="flex items-center gap-3">
+                <input type="checkbox" id="isActive" checked={couponForm.isActive}
+                  onChange={(e) => setCouponForm({ ...couponForm, isActive: e.target.checked })}
+                  className="w-4 h-4 accent-orange-500" />
+                <label htmlFor="isActive" className="text-gray-600 text-sm font-semibold">Active immediately</label>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button onClick={async () => {
+                  if (!couponForm.code || !couponForm.value) { toast.error('Code and value are required'); return; }
+                  setSavingCoupon(true);
+                  try {
+                    await couponsAPI.adminCreate({
+                      code: couponForm.code,
+                      type: couponForm.type,
+                      value: parseFloat(couponForm.value),
+                      minOrderAmount: parseFloat(couponForm.minOrderAmount) || 0,
+                      maxUses: couponForm.maxUses ? parseInt(couponForm.maxUses) : null,
+                      expiresAt: couponForm.expiresAt || null,
+                      isActive: couponForm.isActive,
+                    });
+                    toast.success('Coupon created! 🎟️');
+                    setShowCouponModal(false);
+                    setCouponForm({ code: '', type: 'percentage', value: '', minOrderAmount: '', maxUses: '', expiresAt: '', isActive: true });
+                    fetchData();
+                  } catch (err: any) {
+                    toast.error(err.response?.data?.error || 'Failed to create coupon');
+                  } finally {
+                    setSavingCoupon(false);
+                  }
+                }} disabled={savingCoupon}
+                  className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 text-white font-bold py-3 rounded-xl transition">
+                  {savingCoupon ? 'Creating...' : '🎟️ Create Coupon'}
+                </button>
+                <button onClick={() => setShowCouponModal(false)}
+                  className="px-6 border border-gray-200 text-gray-500 font-bold py-3 rounded-xl hover:bg-gray-50 transition">
+                  Cancel
                 </button>
               </div>
             </div>
@@ -978,6 +1176,138 @@ export default function AdminPage() {
                 <textarea placeholder={`Size: 42cm x 18cm\nColor: Black\nMaterial: Stainless Steel`} value={productForm.specifications} rows={4} onChange={(e) => setProductForm({ ...productForm, specifications: e.target.value })} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
                 <p className="text-gray-400 text-xs mt-1">প্রতিটা line এ একটা specification লেখো</p>
               </div>
+              {/* Variants Section — only show when editing */}
+              {editingProduct && (
+                <div className="border-t border-gray-100 pt-4 space-y-3">
+                  <label className="text-gray-600 text-sm font-bold block">📦 Product Variants</label>
+
+                  {/* Add New Variant Form */}
+                  <div className="bg-orange-50 border border-orange-100 rounded-xl p-3">
+                    <p className="text-xs font-bold text-orange-600 mb-2">➕ Add New Variant</p>
+                    <div className="grid grid-cols-2 gap-2 mb-2">
+                      <div>
+                        <label className="text-gray-500 text-xs mb-1 block">Type *</label>
+                        <input type="text" placeholder="e.g. Size / Color / Weight"
+                          value={newVariant.name}
+                          onChange={e => setNewVariant({ ...newVariant, name: e.target.value })}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-orange-500 bg-white" />
+                      </div>
+                      <div>
+                        <label className="text-gray-500 text-xs mb-1 block">Value *</label>
+                        <input type="text" placeholder="e.g. XL / Red / 1kg"
+                          value={newVariant.value}
+                          onChange={e => setNewVariant({ ...newVariant, value: e.target.value })}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-orange-500 bg-white" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 mb-2">
+                      <div>
+                        <label className="text-gray-500 text-xs mb-1 block">Price (৳) <span className="text-gray-400">optional</span></label>
+                        <input type="number" placeholder="Default price"
+                          value={newVariant.price}
+                          onChange={e => setNewVariant({ ...newVariant, price: e.target.value })}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-orange-500 bg-white" />
+                      </div>
+                      <div>
+                        <label className="text-gray-500 text-xs mb-1 block">Stock *</label>
+                        <input type="number" placeholder="0"
+                          value={newVariant.stock}
+                          onChange={e => setNewVariant({ ...newVariant, stock: e.target.value })}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-orange-500 bg-white" />
+                      </div>
+                      <div>
+                        <label className="text-gray-500 text-xs mb-1 block">SKU <span className="text-gray-400">optional</span></label>
+                        <input type="text" placeholder="e.g. SKU-001"
+                          value={newVariant.sku}
+                          onChange={e => setNewVariant({ ...newVariant, sku: e.target.value })}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-orange-500 bg-white" />
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (!newVariant.name || !newVariant.value) { toast.error('Type and value required'); return; }
+                        try {
+                          await productsAPI.addVariant(editingProduct.id, {
+                            name: newVariant.name,
+                            value: newVariant.value,
+                            price: newVariant.price ? parseFloat(newVariant.price) : null,
+                            stock: parseInt(newVariant.stock) || 0,
+                            sku: newVariant.sku || null,
+                          });
+                          toast.success('Variant added! ✅');
+                          setNewVariant({ name: '', value: '', price: '', stock: '0', sku: '' });
+                          const res = await productsAPI.getVariants(editingProduct.id);
+                          setEditingProductVariants(res.data);
+                        } catch (err: any) {
+                          toast.error(err.response?.data?.error || 'Failed');
+                        }
+                      }}
+                      className="w-full bg-orange-500 hover:bg-orange-400 text-white font-bold py-2 rounded-lg text-xs transition">
+                      ➕ Add Variant
+                    </button>
+                  </div>
+
+                  {/* Variants Table */}
+                  {editingProductVariants.length > 0 && (
+                    <div className="border border-gray-200 rounded-xl overflow-hidden">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-gray-50 border-b border-gray-100">
+                            <th className="text-left px-3 py-2.5 text-gray-500 font-semibold">Type</th>
+                            <th className="text-left px-3 py-2.5 text-gray-500 font-semibold">Value</th>
+                            <th className="text-left px-3 py-2.5 text-gray-500 font-semibold">Price</th>
+                            <th className="text-left px-3 py-2.5 text-gray-500 font-semibold">Stock</th>
+                            <th className="text-left px-3 py-2.5 text-gray-500 font-semibold">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {editingProductVariants.map((v: any, idx: number) => (
+                            <tr key={v.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                              <td className="px-3 py-2 font-semibold text-gray-600">{v.name}</td>
+                              <td className="px-3 py-2 font-bold text-gray-800">{v.value}</td>
+                              <td className="px-3 py-2 text-orange-500 font-semibold">
+                                {v.price ? `৳${v.price}` : <span className="text-gray-400">Default</span>}
+                              </td>
+                              <td className="px-3 py-2">
+                                <input
+                                  type="number"
+                                  defaultValue={v.stock}
+                                  onBlur={async (e) => {
+                                    const newStock = parseInt(e.target.value);
+                                    if (newStock === v.stock) return;
+                                    try {
+                                      await productsAPI.updateVariant(editingProduct.id, v.id, { stock: newStock });
+                                      toast.success('Stock updated!');
+                                      const res = await productsAPI.getVariants(editingProduct.id);
+                                      setEditingProductVariants(res.data);
+                                    } catch { toast.error('Failed'); }
+                                  }}
+                                  className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-orange-500 text-center"
+                                />
+                              </td>
+                              <td className="px-3 py-2">
+                                <button
+                                  onClick={async () => {
+                                    if (!confirm(`Delete "${v.value}"?`)) return;
+                                    try {
+                                      await productsAPI.deleteVariant(editingProduct.id, v.id);
+                                      toast.success('Deleted');
+                                      const res = await productsAPI.getVariants(editingProduct.id);
+                                      setEditingProductVariants(res.data);
+                                    } catch { toast.error('Failed'); }
+                                  }}
+                                  className="bg-red-50 hover:bg-red-100 text-red-500 text-xs font-bold px-2 py-1 rounded-lg transition">
+                                  🗑️
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="flex gap-3 pt-2">
                 <button onClick={handleSaveProduct} disabled={saving} className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 text-white font-bold py-3 rounded-xl transition">
                   {saving ? 'Saving...' : editingProduct ? 'Update Product' : 'Add Product'}
