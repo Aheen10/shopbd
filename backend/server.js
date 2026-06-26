@@ -122,6 +122,8 @@ const returnRoutes = require('./routes/returnRoutes');
 app.use('/api/returns', returnRoutes);
 const couponRoutes = require('./routes/couponRoutes');
 app.use('/api/coupons', couponRoutes);
+const flashSaleRoutes = require('./routes/flashSaleRoutes');
+app.use('/api/flash-sale', flashSaleRoutes);
 
 const { errorHandler, notFound } = require('./middleware/errorMiddleware');
 app.use(notFound);
