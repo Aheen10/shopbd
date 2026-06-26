@@ -6,7 +6,7 @@ import { useStore } from '../lib/store';
 import Navbar from '../components/Navbar';
 import toast, { Toaster } from 'react-hot-toast';
 import jsPDF from 'jspdf';
-import { ordersAPI, productsAPI, settingsAPI, returnsAPI, couponsAPI } from '../lib/api';
+import { ordersAPI, productsAPI, settingsAPI, returnsAPI, couponsAPI, flashSaleAPI } from '../lib/api';
 
 const EMPTY_PRODUCT = {
   name: '', description: '', price: '', oldPrice: '',
@@ -58,6 +58,13 @@ export default function AdminPage() {
   const [trustBadges, setTrustBadges] = useState<any[]>(DEFAULT_BADGES);
   const [shippingPolicy, setShippingPolicy] = useState('');
   const [returnPolicy, setReturnPolicy] = useState('');
+  const [flashSales, setFlashSales] = useState<any[]>([]);
+  const [showFlashSaleModal, setShowFlashSaleModal] = useState(false);
+  const [flashSaleForm, setFlashSaleForm] = useState({ title: '', startTime: '', endTime: '' });
+  const [selectedFlashSale, setSelectedFlashSale] = useState<any>(null);
+  const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [flashSaleItemForm, setFlashSaleItemForm] = useState({ productId: '', discountType: 'percentage', discountValue: '' });
+  const [savingFlashSale, setSavingFlashSale] = useState(false);
   const [insideDhakaCharge, setInsideDhakaCharge] = useState(60);
   const [outsideDhakaCharge, setOutsideDhakaCharge] = useState(120);
   const [freeDeliveryAbove, setFreeDeliveryAbove] = useState(10000);
@@ -97,6 +104,8 @@ export default function AdminPage() {
       setCategories([...new Set([...categories, ...productCats])] as string[]);
       const couponRes = await couponsAPI.adminGetAll();
       setCoupons(couponRes.data);
+      const flashSalesRes = await flashSaleAPI.adminGetAll();
+      setFlashSales(flashSalesRes.data);
     } catch (err) {
       toast.error('Failed to load data');
     } finally {
@@ -292,7 +301,7 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto">
-          {['dashboard', 'orders', 'products', 'customers', 'reports', 'homepage', 'returns','coupons'].map((tab) => (
+          {['dashboard', 'orders', 'products', 'customers', 'reports', 'homepage', 'returns','coupons','flashsale'].map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold capitalize transition ${activeTab === tab ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-500 hover:border-orange-500 hover:text-orange-500'}`}>
               {tab === 'dashboard' && '📊 '}
@@ -303,7 +312,8 @@ export default function AdminPage() {
               {tab === 'homepage' && '🏠 '}
               {tab === 'returns' && '🔄 '}
               {tab === 'coupons' && '🎟️ '}
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'flashsale' && '⚡ '}
+              {tab === 'flashsale' ? 'Flash Sale' : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
         </div>
@@ -777,6 +787,125 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* Flash Sale */}
+      {activeTab === 'flashsale' && (
+        <div className="space-y-4">
+          <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold">⚡ Flash Sale Management</h2>
+              <button onClick={() => setShowFlashSaleModal(true)}
+                className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-xl text-sm transition">
+                ➕ Create Flash Sale
+              </button>
+            </div>
+
+            {flashSales.length === 0 ? (
+              <div className="text-center py-16 text-gray-400">
+                <div className="text-5xl mb-3">⚡</div>
+                <p>No flash sales yet</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {flashSales.map((sale: any) => {
+                  const now = new Date();
+                  const start = new Date(sale.startTime);
+                  const end = new Date(sale.endTime);
+                  const isActive = sale.isActive && now >= start && now <= end;
+                  const isUpcoming = now < start;
+                  const isExpired = now > end;
+
+                  return (
+                    <div key={sale.id} className="border border-gray-200 rounded-2xl overflow-hidden">
+                      {/* Sale Header */}
+                      <div className={`px-5 py-4 flex items-center justify-between ${isActive ? 'bg-gradient-to-r from-red-50 to-orange-50 border-b border-orange-100' : 'bg-gray-50 border-b border-gray-100'}`}>
+                        <div className="flex items-center gap-3">
+                          <span className={`text-2xl ${isActive ? 'animate-pulse' : ''}`}>⚡</span>
+                          <div>
+                            <p className="font-black text-gray-800">{sale.title}</p>
+                            <p className="text-gray-500 text-xs mt-0.5">
+                              {new Date(sale.startTime).toLocaleString()} → {new Date(sale.endTime).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                            isActive ? 'bg-green-100 text-green-700' :
+                            isUpcoming ? 'bg-blue-100 text-blue-700' :
+                            'bg-gray-100 text-gray-500'
+                          }`}>
+                            {isActive ? '🟢 Live' : isUpcoming ? '🔵 Upcoming' : '⚫ Expired'}
+                          </span>
+                          <button onClick={async () => {
+                            await flashSaleAPI.adminUpdate(sale.id, { isActive: !sale.isActive });
+                            toast.success(`Flash sale ${sale.isActive ? 'deactivated' : 'activated'}!`);
+                            fetchData();
+                          }}
+                            className={`px-3 py-1 rounded-full text-xs font-bold ${sale.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {sale.isActive ? '✅ Active' : '⏸ Inactive'}
+                          </button>
+                          <button onClick={() => { setSelectedFlashSale(sale); setShowAddItemModal(true); }}
+                            className="bg-orange-500 hover:bg-orange-400 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition">
+                            ➕ Add Product
+                          </button>
+                          <button onClick={async () => {
+                            if (!confirm('Delete this flash sale?')) return;
+                            await flashSaleAPI.adminDelete(sale.id);
+                            toast.success('Flash sale deleted');
+                            fetchData();
+                          }}
+                            className="bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold px-3 py-1.5 rounded-lg transition">
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Sale Items */}
+                      {sale.items.length === 0 ? (
+                        <div className="px-5 py-4 text-gray-400 text-sm text-center">No products added yet</div>
+                      ) : (
+                        <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                          {sale.items.map((item: any) => {
+                            const flashPrice = item.discountType === 'percentage'
+                              ? Math.round(item.product.price * (1 - item.discountValue / 100))
+                              : Math.max(0, item.product.price - item.discountValue);
+                            return (
+                              <div key={item.id} className="bg-gray-50 rounded-xl p-3 relative">
+                                <button onClick={async () => {
+                                  if (!confirm('Remove this product?')) return;
+                                  await flashSaleAPI.adminRemoveItem(item.id);
+                                  toast.success('Product removed');
+                                  fetchData();
+                                }}
+                                  className="absolute top-2 right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600">
+                                  ✕
+                                </button>
+                                <div className="w-full h-20 bg-white rounded-lg flex items-center justify-center mb-2 overflow-hidden">
+                                  {item.product.imageUrl
+                                    ? <img src={`http://localhost:5000${item.product.imageUrl}`} className="w-full h-full object-cover" />
+                                    : <span className="text-3xl">{item.product.emoji}</span>}
+                                </div>
+                                <p className="text-xs font-semibold text-gray-700 line-clamp-1">{item.product.name}</p>
+                                <div className="flex items-center gap-1 mt-1">
+                                  <span className="text-orange-500 font-black text-xs">৳{flashPrice.toLocaleString()}</span>
+                                  <span className="text-gray-400 text-xs line-through">৳{item.product.price.toLocaleString()}</span>
+                                </div>
+                                <span className="inline-block mt-1 bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">
+                                  {item.discountType === 'percentage' ? `${item.discountValue}% OFF` : `৳${item.discountValue} OFF`}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Return Review Modal */}
       {showReturnModal && selectedReturn && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowReturnModal(false)}>
@@ -911,6 +1040,159 @@ export default function AdminPage() {
                   {savingCoupon ? 'Creating...' : '🎟️ Create Coupon'}
                 </button>
                 <button onClick={() => setShowCouponModal(false)}
+                  className="px-6 border border-gray-200 text-gray-500 font-bold py-3 rounded-xl hover:bg-gray-50 transition">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Flash Sale Create Modal */}
+      {showFlashSaleModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowFlashSaleModal(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-black">⚡ Create Flash Sale</h2>
+              <button onClick={() => setShowFlashSaleModal(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-gray-600 text-sm font-semibold mb-1 block">Sale Title *</label>
+                <input type="text" placeholder="e.g. Eid Special Sale"
+                  value={flashSaleForm.title}
+                  onChange={(e) => setFlashSaleForm({ ...flashSaleForm, title: e.target.value })}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
+              </div>
+              <div>
+                <label className="text-gray-600 text-sm font-semibold mb-1 block">Start Time *</label>
+                <input type="datetime-local"
+                  value={flashSaleForm.startTime}
+                  onChange={(e) => setFlashSaleForm({ ...flashSaleForm, startTime: e.target.value })}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
+              </div>
+              <div>
+                <label className="text-gray-600 text-sm font-semibold mb-1 block">End Time *</label>
+                <input type="datetime-local"
+                  value={flashSaleForm.endTime}
+                  onChange={(e) => setFlashSaleForm({ ...flashSaleForm, endTime: e.target.value })}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button onClick={async () => {
+                  if (!flashSaleForm.title || !flashSaleForm.startTime || !flashSaleForm.endTime) {
+                    toast.error('All fields required'); return;
+                  }
+                  setSavingFlashSale(true);
+                  try {
+                    await flashSaleAPI.adminCreate({
+                      title: flashSaleForm.title,
+                      startTime: flashSaleForm.startTime,
+                      endTime: flashSaleForm.endTime,
+                    });
+                    toast.success('Flash sale created! ⚡');
+                    setShowFlashSaleModal(false);
+                    setFlashSaleForm({ title: '', startTime: '', endTime: '' });
+                    fetchData();
+                  } catch (err: any) {
+                    toast.error(err.response?.data?.error || 'Failed');
+                  } finally { setSavingFlashSale(false); }
+                }} disabled={savingFlashSale}
+                  className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:bg-gray-200 text-white font-bold py-3 rounded-xl transition">
+                  {savingFlashSale ? 'Creating...' : '⚡ Create'}
+                </button>
+                <button onClick={() => setShowFlashSaleModal(false)}
+                  className="px-6 border border-gray-200 text-gray-500 font-bold py-3 rounded-xl hover:bg-gray-50 transition">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Product to Flash Sale Modal */}
+      {showAddItemModal && selectedFlashSale && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowAddItemModal(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-black">➕ Add Product to Flash Sale</h2>
+              <button onClick={() => setShowAddItemModal(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-gray-600 text-sm font-semibold mb-1 block">Select Product *</label>
+                <select value={flashSaleItemForm.productId}
+                  onChange={(e) => setFlashSaleItemForm({ ...flashSaleItemForm, productId: e.target.value })}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500">
+                  <option value="">Select a product...</option>
+                  {products.map((p: any) => (
+                    <option key={p.id} value={p.id}>{p.name} — ৳{p.price.toLocaleString()}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-gray-600 text-sm font-semibold mb-1 block">Discount Type *</label>
+                  <select value={flashSaleItemForm.discountType}
+                    onChange={(e) => setFlashSaleItemForm({ ...flashSaleItemForm, discountType: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500">
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="fixed">Fixed Amount (৳)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-gray-600 text-sm font-semibold mb-1 block">
+                    Discount Value * {flashSaleItemForm.discountType === 'percentage' ? '(%)' : '(৳)'}
+                  </label>
+                  <input type="number" placeholder={flashSaleItemForm.discountType === 'percentage' ? '20' : '100'}
+                    value={flashSaleItemForm.discountValue}
+                    onChange={(e) => setFlashSaleItemForm({ ...flashSaleItemForm, discountValue: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
+                </div>
+              </div>
+              {flashSaleItemForm.productId && flashSaleItemForm.discountValue && (
+                <div className="bg-orange-50 rounded-xl p-3 text-sm">
+                  {(() => {
+                    const p = products.find((p: any) => p.id === parseInt(flashSaleItemForm.productId)) as any;
+                    if (!p) return null;
+                    const flashPrice = flashSaleItemForm.discountType === 'percentage'
+                      ? Math.round(p.price * (1 - parseFloat(flashSaleItemForm.discountValue) / 100))
+                      : Math.max(0, p.price - parseFloat(flashSaleItemForm.discountValue));
+                    return (
+                      <p className="text-gray-700">
+                        Original: <span className="line-through text-gray-400">৳{p.price.toLocaleString()}</span>
+                        {' → '}
+                        Flash Price: <span className="text-orange-500 font-black">৳{flashPrice.toLocaleString()}</span>
+                      </p>
+                    );
+                  })()}
+                </div>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button onClick={async () => {
+                  if (!flashSaleItemForm.productId || !flashSaleItemForm.discountValue) {
+                    toast.error('All fields required'); return;
+                  }
+                  try {
+                    await flashSaleAPI.adminAddItem(selectedFlashSale.id, {
+                      productId: parseInt(flashSaleItemForm.productId),
+                      discountType: flashSaleItemForm.discountType,
+                      discountValue: parseFloat(flashSaleItemForm.discountValue),
+                    });
+                    toast.success('Product added to flash sale! ⚡');
+                    setFlashSaleItemForm({ productId: '', discountType: 'percentage', discountValue: '' });
+                    setShowAddItemModal(false);
+                    fetchData();
+                  } catch (err: any) {
+                    toast.error(err.response?.data?.error || 'Failed');
+                  }
+                }}
+                  className="flex-1 bg-orange-500 hover:bg-orange-400 text-white font-bold py-3 rounded-xl transition">
+                  ➕ Add Product
+                </button>
+                <button onClick={() => setShowAddItemModal(false)}
                   className="px-6 border border-gray-200 text-gray-500 font-bold py-3 rounded-xl hover:bg-gray-50 transition">
                   Cancel
                 </button>
