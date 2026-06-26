@@ -10,6 +10,7 @@ import { useStore } from './lib/store';
 import { translations } from './lib/translations';
 import { Toaster } from 'react-hot-toast';
 import Footer from './components/Footer';
+import FlashSaleBanner from './components/FlashSaleBanner';
 
 const CATEGORY_EMOJIS: { [key: string]: string } = {
   all: '🏪', kitchen: '🍳', home: '🏠', bedroom: '🛏️',
@@ -197,6 +198,9 @@ export default function Home() {
               <button onClick={() => setCurrentBanner(p => (p + 1) % banners.length)}
                 className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center text-gray-700 shadow-md transition z-10 text-base sm:text-lg font-bold">›</button>
             </div>
+            
+            {/* Flash Sale Banner */}
+            <FlashSaleBanner />
 
             {/* Trust Badges */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
