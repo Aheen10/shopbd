@@ -38,6 +38,7 @@ model Product {
   reviews        Review[]
   wishlistedBy Wishlist[]
   variants    ProductVariant[]
+  flashSaleItems FlashSaleItem[]
 }
 
 model Order {
@@ -161,4 +162,25 @@ model CouponUse {
   userId    Int
   orderId   Int
   createdAt DateTime @default(now())
+}
+
+model FlashSale {
+  id          Int      @id @default(autoincrement())
+  title       String
+  startTime   DateTime
+  endTime     DateTime
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  items       FlashSaleItem[]
+}
+
+model FlashSaleItem {
+  id           Int       @id @default(autoincrement())
+  flashSaleId  Int
+  flashSale    FlashSale @relation(fields: [flashSaleId], references: [id])
+  productId    Int
+  product      Product   @relation(fields: [productId], references: [id])
+  discountType String    // 'percentage' or 'fixed'
+  discountValue Float
+  createdAt    DateTime  @default(now())
 }
