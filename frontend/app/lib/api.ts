@@ -131,4 +131,15 @@ export const reviewsAPI = {
   delete: (id: number) => api.delete(`/api/reviews/${id}`),
 };
 
+// Flash Sale API
+export const flashSaleAPI = {
+  getActive: () => api.get('/api/flash-sale/active'),
+  adminGetAll: () => api.get('/api/flash-sale/admin/all'),
+  adminCreate: (data: any) => api.post('/api/flash-sale/admin', data),
+  adminAddItem: (id: number, data: any) => api.post(`/api/flash-sale/admin/${id}/items`, data),
+  adminRemoveItem: (itemId: number) => api.delete(`/api/flash-sale/admin/items/${itemId}`),
+  adminUpdate: (id: number, data: any) => api.put(`/api/flash-sale/admin/${id}`, data),
+  adminDelete: (id: number) => api.delete(`/api/flash-sale/admin/${id}`),
+};
+
 export default api;
