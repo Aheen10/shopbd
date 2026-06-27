@@ -12,7 +12,7 @@ const ORDER_STEPS = [
   { key: 'pending', label: 'Order Placed', emoji: '📋', time: 'Order confirmed' },
   { key: 'processing', label: 'Processing', emoji: '⚙️', time: 'Being prepared' },
   { key: 'shipped', label: 'Shipped', emoji: '🚚', time: 'On the way' },
-  { key: 'delivered', label: 'Delivered', emoji: '📦', time: 'Delivered' },
+  { key: 'delivered', label: 'Delivered', emoji: '📦', time: 'Delivered!' },
 ];
 
 const getStepIndex = (status: string) => {
@@ -46,6 +46,9 @@ export default function OrderDetailPage() {
       );
       if (!found) { toast.error('Order not found'); router.push('/orders'); return; }
       setOrder(found);
+      if (found.deliveryAddress && typeof found.deliveryAddress === 'string') {
+      found.deliveryAddress = JSON.parse(found.deliveryAddress);
+}
     } catch (err) {
       toast.error('Failed to load order');
     } finally {
@@ -184,28 +187,39 @@ export default function OrderDetailPage() {
               </div>
 
               {/* Timeline */}
-              <div className="relative pt-2">
-                <div className="flex items-start justify-between relative">
-                  <div className="absolute left-4 right-4 top-4 h-1 bg-gray-100 z-0" />
-                  <div
-                    className="absolute left-4 top-4 h-1 bg-orange-500 z-0 transition-all duration-700"
-                    style={{ width: `${(currentStep / (ORDER_STEPS.length - 1)) * (100 - 8)}%` }}
-                  />
+              <div className="relative pt-4 pb-2">
+                {/* Progress Line Background */}
+                <div className="absolute left-0 right-0 top-9 h-1 bg-gray-100 mx-8 z-0" />
+                {/* Progress Line Fill */}
+                <div
+                  className="absolute top-9 h-1 bg-orange-500 z-0 transition-all duration-700 mx-8"
+                  style={{ width: `calc(${(currentStep / (ORDER_STEPS.length - 1)) * 100}% - 4rem)` }}
+                />
+                <div className="flex items-start justify-between relative z-10">
                   {ORDER_STEPS.map((step, i) => {
                     const isCompleted = i <= currentStep;
                     const isCurrent = i === currentStep;
                     return (
-                      <div key={step.key} className="flex flex-col items-center z-10 flex-1">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm mb-2 transition-all ${
-                          isCompleted ? 'bg-orange-500 text-white shadow-md' : 'bg-white border-2 border-gray-200 text-gray-300'
+                      <div key={step.key} className="flex flex-col items-center flex-1">
+                        {/* Circle */}
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg mb-3 transition-all duration-500 ${
+                          isCompleted
+                            ? 'bg-orange-500 text-white shadow-lg shadow-orange-200'
+                            : 'bg-white border-2 border-gray-200 text-gray-300'
                         } ${isCurrent ? 'ring-4 ring-orange-100 scale-110' : ''}`}>
-                          {isCompleted ? step.emoji : i + 1}
+                          {isCompleted ? step.emoji : <span className="text-sm font-bold">{i + 1}</span>}
                         </div>
-                        <span className={`text-xs font-semibold text-center ${isCompleted ? 'text-orange-500' : 'text-gray-300'}`}>
+                        {/* Label */}
+                        <span className={`text-xs font-bold text-center leading-tight ${
+                          isCompleted ? 'text-gray-800' : 'text-gray-300'
+                        }`}>
                           {step.label}
                         </span>
-                        <span className={`text-xs text-center mt-0.5 ${isCurrent ? 'text-gray-500' : 'text-gray-300'}`}>
-                          {isCurrent ? step.time : ''}
+                        {/* Sub label */}
+                        <span className={`text-xs text-center mt-1 ${
+                          isCurrent ? 'text-orange-500 font-semibold' : 'text-gray-300'
+                        }`}>
+                          {isCurrent ? step.time : isCompleted && i < currentStep ? '✓ Done' : ''}
                         </span>
                       </div>
                     );
@@ -310,14 +324,15 @@ export default function OrderDetailPage() {
             })()}
 
             {/* Delivery Address */}
-            {savedAddress.address && (
+            {order.deliveryAddress && (
               <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
                 <h3 className="font-bold mb-3">📍 Delivery Address</h3>
                 <div className="text-sm text-gray-600 space-y-1">
-                  <p className="font-semibold text-gray-800">{savedAddress.phone}</p>
-                  <p>{savedAddress.address}</p>
-                  <p>{savedAddress.thana}, {savedAddress.district}</p>
-                  <p>{savedAddress.division}</p>
+                  <p className="font-semibold text-gray-800">{order.deliveryAddress.name}</p>
+                  <p className="text-orange-500 font-semibold">📞 {order.deliveryAddress.phone}</p>
+                  <p>{order.deliveryAddress.fullAddress}</p>
+                  {order.deliveryAddress.area && <p>{order.deliveryAddress.area}</p>}
+                  <p>{order.deliveryAddress.thana}, {order.deliveryAddress.district}</p>
                 </div>
               </div>
             )}
